@@ -3,6 +3,7 @@ package cmd
 
 import (
 	"fmt"
+	"io"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -12,21 +13,27 @@ import (
 	"github.com/kiki-ki/go-qo/internal/printer"
 )
 
+const stdinTableName = "t"
+
 var (
 	outputFormat string
 	verbose      bool
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "qo <file1> [file2...] <sql-query>",
+	Use:   "qo [file1 file2...] <sql-query>",
 	Short: "Execute SQL queries on JSON files",
 	Long: `qo is a command-line tool that allows you to query JSON files using SQL.
 
 Examples:
   qo tests.json "SELECT * FROM tests"
   qo companies.json users.json "SELECT c.name, u.name FROM companies c JOIN users u ON c.id = u.company_id"
-  qo data.json "SELECT * FROM data WHERE age > 30" --format json`,
-	Args: cobra.MinimumNArgs(2),
+  qo data.json "SELECT * FROM data WHERE age > 30" --format json
+
+Pipe from stdin (table name is 't'):
+  curl https://api.example.com/users | qo "SELECT * FROM t"
+  cat data.json | qo "SELECT name, age FROM t WHERE age > 30"`,
+	Args: cobra.MinimumNArgs(1),
 
 	RunE: runQuery,
 }
@@ -37,9 +44,6 @@ func init() {
 }
 
 func runQuery(cmd *cobra.Command, args []string) error {
-	query := args[len(args)-1]
-	filePaths := args[:len(args)-1]
-
 	// Initialize database
 	database, err := db.New()
 	if err != nil {
@@ -47,9 +51,38 @@ func runQuery(cmd *cobra.Command, args []string) error {
 	}
 	defer database.Close()
 
-	// Load files into database
-	if err := loadFiles(database, filePaths); err != nil {
+	// Check if stdin has data
+	stdinHasData, err := hasStdinData()
+	if err != nil {
 		return err
+	}
+
+	var query string
+	var filePaths []string
+
+	if stdinHasData {
+		// stdin mode: only query is required
+		query = args[len(args)-1]
+		filePaths = args[:len(args)-1]
+
+		// Load stdin data
+		if err := loadStdin(database); err != nil {
+			return err
+		}
+	} else {
+		// file mode: at least one file and query required
+		if len(args) < 2 {
+			return fmt.Errorf("requires at least one file and a query, or pipe data via stdin")
+		}
+		query = args[len(args)-1]
+		filePaths = args[:len(args)-1]
+	}
+
+	// Load files into database (if any)
+	if len(filePaths) > 0 {
+		if err := loadFiles(database, filePaths); err != nil {
+			return err
+		}
 	}
 
 	// Execute query
@@ -72,13 +105,46 @@ func runQuery(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func loadFiles(database *db.DB, filePaths []string) error {
+// hasStdinData checks if there's data available on stdin.
+func hasStdinData() (bool, error) {
+	stat, err := os.Stdin.Stat()
+	if err != nil {
+		return false, fmt.Errorf("failed to stat stdin: %w", err)
+	}
+	return (stat.Mode() & os.ModeCharDevice) == 0, nil
+}
+
+// loadStdin loads JSON data from stdin into the database.
+func loadStdin(database *db.DB) error {
 	if verbose {
 		fmt.Fprintln(os.Stderr, "")
 		fmt.Fprintln(os.Stderr, "### Tables ###")
 		fmt.Fprintln(os.Stderr, "")
 	}
 
+	data, err := io.ReadAll(os.Stdin)
+	if err != nil {
+		return fmt.Errorf("failed to read stdin: %w", err)
+	}
+
+	parsed, err := parser.ParseJSONBytes(data)
+	if err != nil {
+		return fmt.Errorf("failed to parse stdin: %w", err)
+	}
+
+	if err := database.LoadData(stdinTableName, parsed); err != nil {
+		return fmt.Errorf("failed to load stdin data: %w", err)
+	}
+
+	if verbose {
+		fmt.Fprintf(os.Stderr, "- stdin → %s (%d rows, %d columns)\n",
+			stdinTableName, len(parsed.Rows), len(parsed.Columns))
+	}
+
+	return nil
+}
+
+func loadFiles(database *db.DB, filePaths []string) error {
 	for _, path := range filePaths {
 		data, err := parser.ParseFile(path)
 		if err != nil {
@@ -95,12 +161,6 @@ func loadFiles(database *db.DB, filePaths []string) error {
 			fmt.Fprintf(os.Stderr, "- %s → %s (%d rows, %d columns)\n",
 				path, tableName, len(data.Rows), len(data.Columns))
 		}
-	}
-
-	if verbose {
-		fmt.Fprintln(os.Stderr, "")
-		fmt.Fprintln(os.Stderr, "### Result ###")
-		fmt.Fprintln(os.Stderr, "")
 	}
 
 	return nil

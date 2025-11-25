@@ -275,6 +275,171 @@ func TestDataType_String(t *testing.T) {
 	}
 }
 
+func TestJSONParser_ParseBytes_Array(t *testing.T) {
+	data := []byte(`[{"id": 1, "name": "Alice"}, {"id": 2, "name": "Bob"}]`)
+
+	p := &JSONParser{}
+	result, err := p.ParseBytes(data)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(result.Columns) != 2 {
+		t.Errorf("expected 2 columns, got %d", len(result.Columns))
+	}
+
+	if len(result.Rows) != 2 {
+		t.Errorf("expected 2 rows, got %d", len(result.Rows))
+	}
+
+	if result.Rows[0][1] != "Alice" {
+		t.Errorf("expected Alice, got %v", result.Rows[0][1])
+	}
+}
+
+func TestJSONParser_ParseBytes_Object(t *testing.T) {
+	data := []byte(`{"id": 42, "name": "Test"}`)
+
+	p := &JSONParser{}
+	result, err := p.ParseBytes(data)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(result.Rows) != 1 {
+		t.Errorf("expected 1 row, got %d", len(result.Rows))
+	}
+
+	if result.Rows[0][0] != int64(42) {
+		t.Errorf("expected 42, got %v", result.Rows[0][0])
+	}
+}
+
+func TestJSONParser_ParseBytes_InvalidJSON(t *testing.T) {
+	data := []byte(`{invalid}`)
+
+	p := &JSONParser{}
+	_, err := p.ParseBytes(data)
+	if err == nil {
+		t.Error("expected error for invalid JSON")
+	}
+}
+
+func TestJSONParser_ParseBytes_EmptyArray(t *testing.T) {
+	data := []byte(`[]`)
+
+	p := &JSONParser{}
+	_, err := p.ParseBytes(data)
+	if err == nil {
+		t.Error("expected error for empty array")
+	}
+}
+
+func TestJSONParser_ParseBytes_WithTypes(t *testing.T) {
+	data := []byte(`[
+		{"int": 1, "float": 3.14, "bool": true, "str": "hello", "null": null}
+	]`)
+
+	p := &JSONParser{}
+	result, err := p.ParseBytes(data)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Check types are inferred correctly
+	expectedTypes := map[string]DataType{
+		"int":   TypeInteger,
+		"float": TypeReal,
+		"bool":  TypeBoolean,
+		"str":   TypeText,
+		"null":  TypeNull,
+	}
+
+	for _, col := range result.Columns {
+		expected, ok := expectedTypes[col.Name]
+		if !ok {
+			continue
+		}
+		if col.Type != expected {
+			t.Errorf("column %s: expected type %v, got %v", col.Name, expected, col.Type)
+		}
+	}
+}
+
+func TestJSONParser_ParseBytes_NestedJSON(t *testing.T) {
+	data := []byte(`[{"id": 1, "meta": {"key": "value"}, "tags": ["a", "b"]}]`)
+
+	p := &JSONParser{}
+	result, err := p.ParseBytes(data)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Find meta and tags columns
+	var metaIdx, tagsIdx int
+	for i, col := range result.Columns {
+		if col.Name == "meta" {
+			metaIdx = i
+			if col.Type != TypeJSON {
+				t.Errorf("expected meta to be JSON type, got %v", col.Type)
+			}
+		}
+		if col.Name == "tags" {
+			tagsIdx = i
+			if col.Type != TypeJSON {
+				t.Errorf("expected tags to be JSON type, got %v", col.Type)
+			}
+		}
+	}
+
+	// Check raw JSON is preserved
+	if result.Rows[0][metaIdx] != `{"key": "value"}` {
+		t.Errorf("expected raw JSON for meta, got %v", result.Rows[0][metaIdx])
+	}
+	if result.Rows[0][tagsIdx] != `["a", "b"]` {
+		t.Errorf("expected raw JSON for tags, got %v", result.Rows[0][tagsIdx])
+	}
+}
+
+func TestParseJSONBytes(t *testing.T) {
+	data := []byte(`[{"test": 123}]`)
+
+	result, err := ParseJSONBytes(data)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(result.Rows) != 1 {
+		t.Errorf("expected 1 row, got %d", len(result.Rows))
+	}
+
+	if result.Rows[0][0] != int64(123) {
+		t.Errorf("expected 123, got %v", result.Rows[0][0])
+	}
+}
+
+func TestParseJSONBytes_LargeData(t *testing.T) {
+	// Simulate API response like data
+	data := []byte(`[
+		{"id": "abc", "url": "https://example.com/1", "width": 500, "height": 300},
+		{"id": "def", "url": "https://example.com/2", "width": 600, "height": 400},
+		{"id": "ghi", "url": "https://example.com/3", "width": 500, "height": 500}
+	]`)
+
+	result, err := ParseJSONBytes(data)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(result.Rows) != 3 {
+		t.Errorf("expected 3 rows, got %d", len(result.Rows))
+	}
+
+	if len(result.Columns) != 4 {
+		t.Errorf("expected 4 columns, got %d", len(result.Columns))
+	}
+}
+
 // Helper function to create a temporary JSON file
 func createTempJSON(t *testing.T, content string) string {
 	t.Helper()

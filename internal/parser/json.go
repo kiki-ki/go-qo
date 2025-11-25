@@ -177,3 +177,30 @@ func (p *JSONParser) extractValue(val gjson.Result) any {
 func ParseJSON(path string) (*ParsedData, error) {
 	return (&JSONParser{}).Parse(path)
 }
+
+// ParseJSONBytes parses JSON from a byte slice.
+func ParseJSONBytes(data []byte) (*ParsedData, error) {
+	return (&JSONParser{}).ParseBytes(data)
+}
+
+// ParseBytes parses JSON from a byte slice.
+func (p *JSONParser) ParseBytes(data []byte) (*ParsedData, error) {
+	if !gjson.ValidBytes(data) {
+		return nil, fmt.Errorf("invalid JSON format")
+	}
+
+	result := gjson.ParseBytes(data)
+	items := p.extractItems(result)
+
+	if len(items) == 0 {
+		return nil, fmt.Errorf("empty JSON data")
+	}
+
+	columns := p.extractColumns(items)
+	rows := p.extractRows(items, columns)
+
+	return &ParsedData{
+		Columns: columns,
+		Rows:    rows,
+	}, nil
+}
