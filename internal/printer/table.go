@@ -175,12 +175,10 @@ func (p *Printer) printCSV(columns []string, data [][]any) error {
 	w := csv.NewWriter(p.opts.Output)
 	defer w.Flush()
 
-	// Write header
 	if err := w.Write(columns); err != nil {
 		return fmt.Errorf("failed to write CSV header: %w", err)
 	}
 
-	// Write data rows
 	for _, row := range data {
 		record := make([]string, len(row))
 		for i, val := range row {
@@ -196,10 +194,4 @@ func (p *Printer) printCSV(columns []string, data [][]any) error {
 	}
 
 	return w.Error()
-}
-
-// Print is a convenience function for backward compatibility.
-// Deprecated: Use New().PrintRows() instead.
-func Print(rows *sql.Rows) error {
-	return New(nil).PrintRows(rows)
 }

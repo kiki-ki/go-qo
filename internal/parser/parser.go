@@ -1,5 +1,4 @@
-// Package parser provides functionality to parse various file formats
-// into a common intermediate representation for SQL querying.
+// Package parser provides functionality to parse file formats into a common representation.
 package parser
 
 import (
@@ -27,24 +26,23 @@ func (dt DataType) String() string {
 		return "INTEGER"
 	case TypeReal:
 		return "REAL"
-	case TypeBoolean:
-		return "INTEGER" // SQLite stores booleans as integers
-	case TypeJSON:
-		return "TEXT"
-	case TypeNull:
-		return "TEXT"
+	case TypeBoolean, TypeJSON, TypeNull, TypeText:
+		fallthrough
 	default:
+		if dt == TypeBoolean {
+			return "INTEGER"
+		}
 		return "TEXT"
 	}
 }
 
-// Column represents a table column with its name and inferred type.
+// Column represents a table column with its name and type.
 type Column struct {
 	Name string
 	Type DataType
 }
 
-// ParsedData holds the parsed data from a file.
+// ParsedData holds parsed data from a file.
 type ParsedData struct {
 	Columns []Column
 	Rows    [][]any
@@ -65,7 +63,6 @@ type Parser interface {
 	SupportedExtensions() []string
 }
 
-// registry holds registered parsers.
 var registry = make(map[string]Parser)
 
 // Register adds a parser to the registry.
@@ -75,7 +72,7 @@ func Register(p Parser) {
 	}
 }
 
-// GetParser returns the appropriate parser for the given file path.
+// GetParser returns the parser for the given file path.
 func GetParser(path string) (Parser, error) {
 	ext := strings.ToLower(filepath.Ext(path))
 	if p, ok := registry[ext]; ok {
