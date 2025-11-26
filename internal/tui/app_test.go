@@ -13,7 +13,7 @@ func TestNewModel(t *testing.T) {
 	db := testutil.SetupTestDB(t)
 	defer db.Close()
 
-	m := tui.NewModel(db)
+	m := tui.NewModel(db, []string{"test_table"})
 
 	// Verify initial state via View output
 	view := m.View()
@@ -26,7 +26,7 @@ func TestModel_View(t *testing.T) {
 	db := testutil.SetupTestDB(t)
 	defer db.Close()
 
-	m := tui.NewModel(db)
+	m := tui.NewModel(db, []string{"test_table"})
 	view := m.View()
 
 	// Check view contains expected elements
@@ -42,7 +42,7 @@ func TestModel_Update_Quit(t *testing.T) {
 	db := testutil.SetupTestDB(t)
 	defer db.Close()
 
-	m := tui.NewModel(db)
+	m := tui.NewModel(db, []string{"test_table"})
 
 	// Test Ctrl+C quits
 	newModel, cmd := m.Update(tea.KeyMsg{Type: tea.KeyCtrlC})
@@ -54,7 +54,7 @@ func TestModel_Update_Quit(t *testing.T) {
 	}
 
 	// Test Esc quits
-	m = tui.NewModel(db)
+	m = tui.NewModel(db, []string{"test_table"})
 	newModel, cmd = m.Update(tea.KeyMsg{Type: tea.KeyEsc})
 	if newModel == nil {
 		t.Error("expected non-nil model")
@@ -68,7 +68,7 @@ func TestModel_Update_TabTogglesFocus(t *testing.T) {
 	db := testutil.SetupTestDB(t)
 	defer db.Close()
 
-	m := tui.NewModel(db)
+	m := tui.NewModel(db, []string{"test_table"})
 
 	// Press Tab to toggle focus
 	newModel, _ := m.Update(tea.KeyMsg{Type: tea.KeyTab})
@@ -84,7 +84,7 @@ func TestModel_Init(t *testing.T) {
 	db := testutil.SetupTestDB(t)
 	defer db.Close()
 
-	m := tui.NewModel(db)
+	m := tui.NewModel(db, []string{"test_table"})
 	cmd := m.Init()
 
 	// Init should return a blink command for textinput

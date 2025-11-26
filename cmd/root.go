@@ -47,8 +47,9 @@ func init() {
 
 // runConfig holds the parsed configuration for a query run.
 type runConfig struct {
-	query     string
-	filePaths []string
+	query      string
+	filePaths  []string
+	tableNames []string
 }
 
 func runQuery(cmd *cobra.Command, args []string) error {
@@ -76,7 +77,7 @@ func run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	cfg := runConfig{
+	cfg := &runConfig{
 		query:     queryFlag,
 		filePaths: args,
 	}
@@ -100,31 +101,39 @@ func validateFormats() error {
 }
 
 // loadData loads data from stdin and/or files into the database.
-func loadData(loader *input.Loader, cfg runConfig, hasStdinData bool) error {
+// Returns the list of loaded table names.
+func loadData(loader *input.Loader, cfg *runConfig, hasStdinData bool) error {
 	if !hasStdinData && len(cfg.filePaths) == 0 {
 		return fmt.Errorf("no input data: provide files as arguments or pipe data via stdin")
 	}
+
+	var tableNames []string
 
 	if hasStdinData {
 		if err := loader.LoadStdin(stdinTableName); err != nil {
 			return err
 		}
+		tableNames = append(tableNames, stdinTableName)
 	}
 
 	if len(cfg.filePaths) > 0 {
 		if err := loader.LoadFiles(cfg.filePaths); err != nil {
 			return err
 		}
+		for _, path := range cfg.filePaths {
+			tableNames = append(tableNames, db.TableNameFromPath(path))
+		}
 	}
 
+	cfg.tableNames = tableNames
 	return nil
 }
 
 // execute runs either TUI or CLI mode based on configuration.
 // TUI mode is used when query is empty, CLI mode when query is provided via -q flag.
-func execute(database *db.DB, cfg runConfig) error {
+func execute(database *db.DB, cfg *runConfig) error {
 	if cfg.query == "" {
-		return tui.Run(database.DB)
+		return tui.Run(database.DB, cfg.tableNames)
 	}
 	return cli.Run(database.DB, cfg.query, &cli.Options{
 		Format: output.Format(outputFormat),

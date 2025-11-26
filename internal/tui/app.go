@@ -23,12 +23,17 @@ type Model struct {
 }
 
 // NewModel creates a new TUI model.
-func NewModel(db *sql.DB) Model {
+func NewModel(db *sql.DB, tableNames []string) Model {
 	ti := textinput.New()
 	ti.Placeholder = "SQL Query..."
 	ti.Focus()
 	ti.CharLimit = 1000
 	ti.Width = 100
+
+	// Set default query using first available table
+	if len(tableNames) > 0 {
+		ti.SetValue(fmt.Sprintf("SELECT * FROM %s LIMIT 10", tableNames[0]))
+	}
 
 	t := table.New(
 		table.WithColumns([]table.Column{{Title: "Results", Width: 20}}),
@@ -92,6 +97,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				defer rows.Close()
 				cols, tableRows, err := SQLRowsToTable(rows)
 				if err == nil {
+					// Clear rows first to avoid panic when column count changes
+					m.table.SetRows([]table.Row{})
 					m.table.SetColumns(cols)
 					m.table.SetRows(tableRows)
 					m.err = nil
@@ -123,8 +130,8 @@ func (m Model) View() string {
 }
 
 // Run starts the TUI application.
-func Run(db *sql.DB) error {
-	p := tea.NewProgram(NewModel(db), tea.WithAltScreen())
+func Run(db *sql.DB, tableNames []string) error {
+	p := tea.NewProgram(NewModel(db, tableNames), tea.WithAltScreen())
 	_, err := p.Run()
 	return err
 }
