@@ -7,7 +7,6 @@ import (
 
 	"github.com/charmbracelet/bubbles/table"
 	"github.com/charmbracelet/bubbles/textinput"
-	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
@@ -40,7 +39,6 @@ type Model struct {
 	mode       Mode
 	table      table.Model
 	textInput  textinput.Model
-	viewport   viewport.Model
 	err        error
 	width      int
 	height     int
@@ -93,14 +91,11 @@ func NewModel(db *sql.DB, tableNames []string) Model {
 		Bold(true)
 	t.SetStyles(s)
 
-	vp := viewport.New(80, 10)
-
 	return Model{
 		db:         db,
 		mode:       ModeQuery,
 		table:      t,
 		textInput:  ti,
-		viewport:   vp,
 		colCursor:  0,
 		colOffset:  0,
 		tableNames: tableNames,
@@ -145,9 +140,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *Model) handleWindowResize(msg tea.WindowSizeMsg) {
 	m.width = msg.Width
 	m.height = msg.Height
-	m.viewport.Width = msg.Width - 4
-	m.viewport.Height = msg.Height - 8
-	m.table.SetHeight(m.viewport.Height - 2)
+	m.table.SetHeight(msg.Height - 10)
 }
 
 // handleKeyMsg processes key events and returns a command and quit flag.
@@ -194,22 +187,20 @@ func (m *Model) handleTableScroll(msg tea.KeyMsg) {
 
 	if moveLeft && m.colCursor > 0 {
 		m.colCursor--
-		// Adjust scroll offset if cursor goes out of view
-		if m.colCursor < m.colOffset {
-			m.colOffset = m.colCursor
-			m.updateVisibleColumns()
-		}
-	}
-	if moveRight && m.colCursor < len(m.allColumns)-1 {
+	} else if moveRight && m.colCursor < len(m.allColumns)-1 {
 		m.colCursor++
-		// Adjust scroll offset if cursor goes out of view
-		// Keep at least 3 columns visible before cursor if possible
-		visibleCols := m.visibleColumnCount()
-		if m.colCursor >= m.colOffset+visibleCols {
-			m.colOffset = m.colCursor - visibleCols + 1
-			m.updateVisibleColumns()
-		}
+	} else {
+		return
 	}
+
+	// Adjust scroll offset to keep cursor visible
+	visibleCols := m.visibleColumnCount()
+	if m.colCursor < m.colOffset {
+		m.colOffset = m.colCursor
+	} else if m.colCursor >= m.colOffset+visibleCols {
+		m.colOffset = m.colCursor - visibleCols + 1
+	}
+	m.updateVisibleColumns()
 }
 
 // visibleColumnCount returns the number of columns that can fit in the view.
