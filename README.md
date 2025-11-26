@@ -29,23 +29,13 @@ cat data.json | qo -i json -q "SELECT * FROM tmp" # Direct query to stdin data
 
 ## TUI editor (default)
 
-| Key | Action |
-| - | - |
-| `Tab` | Switch between Query/Table mode |
-| `Esc/Ctrl+C` | Quit |
-
-### QUERY mode
-
-| Key | Action |
-| - | - |
-| `Enter` | Execute query and exit |
-
-### TABLE mode
-
-| Key | Action |
-|-----|--------|
-| `↑/↓` or `j/k` | Scroll rows |
-| `←/→` or `h/l` | Scroll columns |
+| Key | Mode | Action |
+| - | - | - |
+| `Tab` | ALL | Switch between Query/Table mode |
+| `Esc/Ctrl+C` | ALL | Quit |
+| `Enter` | "QUERY" | Execute query and exit |
+| `↑/↓` or `j/k` | "TABLE" | Scroll rows |
+| `←/→` or `h/l` | "TABLE" | Scroll columns |
 
 ## License
 
