@@ -27,25 +27,25 @@ cat data.json | qo -i json -q "SELECT * FROM tmp" # Direct query to stdin data
 | `--output` | `-o` | Output format: `table` (default), `json`, `csv` |
 | `--query` | `-q` | SQL query (enables CLI mode) |
 
-### TUI editor (default)
+## TUI editor (default)
 
 | Key | Action |
 | - | - |
 | `Tab` | Switch between Query/Table mode |
 | `Esc/Ctrl+C` | Quit |
 
-#### QUERY mode
+### QUERY mode
 
 | Key | Action |
 | - | - |
 | `Enter` | Execute query and exit |
 
-#### TABLE mode
+### TABLE mode
 
 | Key | Action |
 |-----|--------|
-| `↑/↓` or `j/k` | Navigate rows (Table mode) |
-| `←/→` or `h/l` | Navigate columns (Table mode) |
+| `↑/↓` or `j/k` | Scroll rows |
+| `←/→` or `h/l` | Scroll columns |
 
 ## License
 
