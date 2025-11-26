@@ -1,10 +1,6 @@
 # qo
 
-A command-line tool to query JSON object(s) using SQL.
-
-## Features
-
-TODO
+A command-line tool to query JSON data using SQL with an interactive editor.
 
 ## Installation
 
@@ -12,37 +8,44 @@ TODO
 go install github.com/kiki-ki/go-qo/cmd/qo@latest
 ```
 
-Or build from source:
-
-```bash
-git clone https://github.com/kiki-ki/go-qo.git
-cd go-qo
-go build -o qo ./cmd/qo
-```
-
 ## Usage
 
 ```bash
-qo [file1 file2...] <sql-query> [flags]
+# TUI usage
+qo -i json data.json                              # Open TUI editor with file data
+cat data.json | qo -i json                        # Open TUI editor with stdin data
+# CLI usage
+qo -i json -q "SELECT * FROM data" data.json      # Direct query to file data
+cat data.json | qo -i json -q "SELECT * FROM tmp" # Direct query to stdin data
 ```
 
 ### Options
 
 | Flag | Short | Description |
 |------|-------|-------------|
-| `--format` | `-f` | Output format: `table` (default), `json`, `csv` |
+| `--input` | `-i` | Input format: `json` (default) |
+| `--output` | `-o` | Output format: `table` (default), `json`, `csv` |
+| `--query` | `-q` | SQL query (enables CLI mode) |
 
-## Examples
+### TUI editor (default)
 
-```bash
-# JSON file / Table name is decided by filename
-qo ./data/users.json "SELECT name, age FROM users WHERE age > 30"
-qo users.json tests.json "SELECT u.name, t.point FROM users u JOIN tests t ON u.id = t.user_id"
+| Key | Action |
+| - | - |
+| `Tab` | Switch between Query/Table mode |
+| `Esc/Ctrl+C` | Quit |
 
-# Stdin (Pipe) / Temporary table name is `t`.
-curl -s https://api.example.com/users | qo "SELECT * FROM t WHERE age > 30"
-echo '[{"id":1},{"id":2}]' | qo "SELECT * FROM t"
-```
+#### QUERY mode
+
+| Key | Action |
+| - | - |
+| `Enter` | Execute query and exit |
+
+#### TABLE mode
+
+| Key | Action |
+|-----|--------|
+| `↑/↓` or `j/k` | Navigate rows (Table mode) |
+| `←/→` or `h/l` | Navigate columns (Table mode) |
 
 ## License
 
