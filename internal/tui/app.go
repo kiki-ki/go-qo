@@ -3,6 +3,7 @@ package tui
 import (
 	"database/sql"
 	"fmt"
+	"strings"
 
 	"github.com/charmbracelet/bubbles/table"
 	"github.com/charmbracelet/bubbles/textinput"
@@ -20,9 +21,13 @@ var (
 	colorFontAccent      = lipgloss.Color("6")
 )
 
-var baseStyle = lipgloss.NewStyle().
-	BorderStyle(lipgloss.NormalBorder()).
-	BorderForeground(colorFontNormal)
+// Styles
+var (
+	baseStyle   = lipgloss.NewStyle().BorderStyle(lipgloss.NormalBorder()).BorderForeground(colorFontNormal)
+	headerStyle = lipgloss.NewStyle().Foreground(colorFontPlaceholder).Bold(true)
+	modeStyle   = lipgloss.NewStyle().Foreground(colorFontAccent).Bold(true)
+	errorStyle  = lipgloss.NewStyle().Foreground(colorFontError)
+)
 
 // Model represents the TUI application state.
 type Model struct {
@@ -97,42 +102,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
-		m.width = msg.Width
-		m.height = msg.Height
-		m.viewport.Width = msg.Width - 4   // account for borders
-		m.viewport.Height = msg.Height - 8 // account for header, input, etc.
-		m.table.SetHeight(m.viewport.Height - 2)
+		m.handleWindowResize(msg)
 
 	case tea.KeyMsg:
-		switch msg.Type {
-		case tea.KeyCtrlC, tea.KeyEsc: // Quit
+		c, quit := m.handleKeyMsg(msg)
+		if quit {
 			return m, tea.Quit
-		case tea.KeyTab: // Switch mode
-			if m.mode == ModeQuery {
-				m.mode = ModeTable
-				m.textInput.Blur()
-				m.table.Focus()
-			} else {
-				m.mode = ModeQuery
-				m.table.Blur()
-				m.textInput.Focus()
-				cmds = append(cmds, textinput.Blink)
-			}
-		case tea.KeyLeft, tea.KeyRight, tea.KeyRunes:
-			// Horizontal scroll when in table mode
-			if m.mode == ModeTable {
-				scrollLeft := msg.Type == tea.KeyLeft || msg.String() == "h"
-				scrollRight := msg.Type == tea.KeyRight || msg.String() == "l"
-
-				if scrollLeft && m.colScrollOffset > 0 {
-					m.colScrollOffset--
-					m.updateVisibleColumns()
-				}
-				if scrollRight && m.colScrollOffset < len(m.allColumns)-1 {
-					m.colScrollOffset++
-					m.updateVisibleColumns()
-				}
-			}
+		}
+		if c != nil {
+			cmds = append(cmds, c)
 		}
 	}
 
@@ -142,27 +120,91 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	// Execute query in real-time when in query mode
 	if m.mode == ModeQuery {
-		query := m.textInput.Value()
-		if query != "" {
-			rows, err := m.db.Query(query)
-			if err == nil {
-				defer rows.Close()
-				cols, tableRows, err := SQLRowsToTable(rows)
-				if err == nil {
-					// Store all data
-					m.allColumns = cols
-					m.allRows = tableRows
-					m.colScrollOffset = 0
-					m.updateVisibleColumns()
-					m.err = nil
-				}
-			} else {
-				m.err = err
-			}
-		}
+		m.executeQuery()
 	}
 
 	return m, tea.Batch(cmds...)
+}
+
+// handleWindowResize updates dimensions on window resize.
+func (m *Model) handleWindowResize(msg tea.WindowSizeMsg) {
+	m.width = msg.Width
+	m.height = msg.Height
+	m.viewport.Width = msg.Width - 4
+	m.viewport.Height = msg.Height - 8
+	m.table.SetHeight(m.viewport.Height - 2)
+}
+
+// handleKeyMsg processes key events and returns a command and quit flag.
+func (m *Model) handleKeyMsg(msg tea.KeyMsg) (tea.Cmd, bool) {
+	switch msg.Type {
+	case tea.KeyCtrlC, tea.KeyEsc:
+		return nil, true
+
+	case tea.KeyTab:
+		return m.toggleMode(), false
+
+	case tea.KeyLeft, tea.KeyRight, tea.KeyRunes:
+		if m.mode == ModeTable {
+			m.handleTableScroll(msg)
+		}
+	}
+	return nil, false
+}
+
+// toggleMode switches between Query and Table modes.
+func (m *Model) toggleMode() tea.Cmd {
+	if m.mode == ModeQuery {
+		m.mode = ModeTable
+		m.textInput.Blur()
+		m.table.Focus()
+		return nil
+	}
+	m.mode = ModeQuery
+	m.table.Blur()
+	m.textInput.Focus()
+	return textinput.Blink
+}
+
+// handleTableScroll handles horizontal scrolling in table mode.
+func (m *Model) handleTableScroll(msg tea.KeyMsg) {
+	scrollLeft := msg.Type == tea.KeyLeft || msg.String() == "h"
+	scrollRight := msg.Type == tea.KeyRight || msg.String() == "l"
+
+	if scrollLeft && m.colScrollOffset > 0 {
+		m.colScrollOffset--
+		m.updateVisibleColumns()
+	}
+	if scrollRight && m.colScrollOffset < len(m.allColumns)-1 {
+		m.colScrollOffset++
+		m.updateVisibleColumns()
+	}
+}
+
+// executeQuery runs the current query and updates the table.
+func (m *Model) executeQuery() {
+	query := m.textInput.Value()
+	if query == "" {
+		return
+	}
+
+	rows, err := m.db.Query(query)
+	if err != nil {
+		m.err = err
+		return
+	}
+	defer rows.Close()
+
+	cols, tableRows, err := SQLRowsToTable(rows)
+	if err != nil {
+		return
+	}
+
+	m.allColumns = cols
+	m.allRows = tableRows
+	m.colScrollOffset = 0
+	m.updateVisibleColumns()
+	m.err = nil
 }
 
 // updateVisibleColumns updates the table with visible columns based on scroll offset.
@@ -190,36 +232,49 @@ func (m *Model) updateVisibleColumns() {
 }
 
 func (m Model) View() string {
-	errView := ""
-	if m.err != nil {
-		errView = lipgloss.NewStyle().Foreground(colorFontError).Render(fmt.Sprintf("\nError: %v", m.err))
-	}
+	var b strings.Builder
 
-	headerStyle := lipgloss.NewStyle().Foreground(colorFontPlaceholder).Bold(true)
-	modeStyle := lipgloss.NewStyle().Foreground(colorFontAccent).Bold(true)
-
-	header := fmt.Sprintf(" [%s] %s", modeStyle.Render(string(m.mode)), m.mode.CommandsHint())
-
-	if m.mode == ModeTable {
-		// position info
-		if len(m.allRows) != 0 {
-			row := m.table.Cursor() + 1
-			col := m.colScrollOffset + 1
-			header += fmt.Sprintf(" (row: %d/%d, col: %d/%d)", row, len(m.allRows), col, len(m.allColumns))
-		} else {
-			header += " (no data)"
-		}
-	}
-
-	return baseStyle.Render(
+	b.WriteString(baseStyle.Render(
 		lipgloss.JoinVertical(lipgloss.Left,
-			headerStyle.Render(header),
+			m.renderHeader(),
 			m.textInput.View(),
-			errView,
+			m.renderError(),
 			"\n",
 			m.table.View(),
 		),
-	) + "\n"
+	))
+	b.WriteString("\n")
+
+	return b.String()
+}
+
+// renderHeader builds the header line with mode and hints.
+func (m Model) renderHeader() string {
+	header := fmt.Sprintf(" [%s] %s", modeStyle.Render(string(m.mode)), m.mode.CommandsHint())
+
+	if m.mode == ModeTable {
+		header += m.renderPositionInfo()
+	}
+
+	return headerStyle.Render(header)
+}
+
+// renderPositionInfo returns the current row/col position info.
+func (m Model) renderPositionInfo() string {
+	if len(m.allRows) == 0 {
+		return " (no data)"
+	}
+	row := m.table.Cursor() + 1
+	col := m.colScrollOffset + 1
+	return fmt.Sprintf(" (row: %d/%d, col: %d/%d)", row, len(m.allRows), col, len(m.allColumns))
+}
+
+// renderError returns the error view if there's an error.
+func (m Model) renderError() string {
+	if m.err == nil {
+		return ""
+	}
+	return errorStyle.Render(fmt.Sprintf("\nError: %v", m.err))
 }
 
 // Run starts the TUI application.

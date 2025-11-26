@@ -17,8 +17,8 @@ func TestNewModel(t *testing.T) {
 
 	// Verify initial state via View output
 	view := m.View()
-	if !strings.Contains(view, "SQL Editor") {
-		t.Error("expected header in view")
+	if !strings.Contains(view, "QUERY") {
+		t.Error("expected QUERY mode in view")
 	}
 }
 
@@ -30,11 +30,11 @@ func TestModel_View(t *testing.T) {
 	view := m.View()
 
 	// Check view contains expected elements
-	if !strings.Contains(view, "SQL Editor") {
-		t.Error("expected 'SQL Editor' in view")
+	if !strings.Contains(view, "QUERY") {
+		t.Error("expected 'QUERY' mode in view")
 	}
-	if !strings.Contains(view, "Tab to switch focus") {
-		t.Error("expected focus hint in view")
+	if !strings.Contains(view, "Tab") {
+		t.Error("expected Tab hint in view")
 	}
 }
 
@@ -90,5 +90,35 @@ func TestModel_Init(t *testing.T) {
 	// Init should return a blink command for textinput
 	if cmd == nil {
 		t.Error("expected non-nil init command")
+	}
+}
+
+func TestModel_View_TableMode(t *testing.T) {
+	db := testutil.SetupTestDB(t)
+	defer db.Close()
+
+	m := tui.NewModel(db, []string{"test"})
+
+	// Switch to table mode
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyTab})
+
+	view := updated.View()
+	if !strings.Contains(view, "TABLE") {
+		t.Error("expected TABLE mode in view after Tab")
+	}
+}
+
+func TestModel_View_ErrorDisplay(t *testing.T) {
+	db := testutil.SetupTestDB(t)
+	defer db.Close()
+
+	m := tui.NewModel(db, []string{"test"})
+
+	// Enter invalid SQL to trigger error
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("INVALID SQL")})
+
+	view := updated.View()
+	if !strings.Contains(view, "Error") {
+		t.Error("expected error message in view for invalid SQL")
 	}
 }
