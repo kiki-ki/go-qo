@@ -5,10 +5,6 @@ BINARY_NAME := bin/qo
 build: ## Build the binary
 	go build -o $(BINARY_NAME) ./cmd/qo
 
-.PHONY: run
-run: build ## Build and run the application
-	./$(BINARY_NAME)
-
 .PHONY: test
 test: ## Run all tests
 	go test ./... -v

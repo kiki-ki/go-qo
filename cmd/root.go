@@ -52,6 +52,13 @@ type runConfig struct {
 }
 
 func runQuery(cmd *cobra.Command, args []string) error {
+	if err := run(cmd, args); err != nil {
+		return fmt.Errorf("%w\n", err)
+	}
+	return nil
+}
+
+func run(cmd *cobra.Command, args []string) error {
 	if err := validateFormats(); err != nil {
 		return err
 	}
@@ -94,6 +101,10 @@ func validateFormats() error {
 
 // loadData loads data from stdin and/or files into the database.
 func loadData(loader *input.Loader, cfg runConfig, hasStdinData bool) error {
+	if !hasStdinData && len(cfg.filePaths) == 0 {
+		return fmt.Errorf("no input data: provide files as arguments or pipe data via stdin")
+	}
+
 	if hasStdinData {
 		if err := loader.LoadStdin(stdinTableName); err != nil {
 			return err
