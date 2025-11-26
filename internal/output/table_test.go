@@ -1,4 +1,4 @@
-package printer
+package output
 
 import (
 	"bytes"
@@ -62,7 +62,7 @@ func TestPrinter_PrintRows(t *testing.T) {
 			defer rows.Close()
 
 			var buf bytes.Buffer
-			p := New(&Options{Format: tt.format, Output: &buf})
+			p := NewPrinter(&Options{Format: tt.format, Output: &buf})
 
 			if err := p.PrintRows(rows); err != nil {
 				t.Fatalf("PrintRows failed: %v", err)
@@ -82,7 +82,7 @@ func TestPrinter_PrintRows_NullValues(t *testing.T) {
 	defer rows.Close()
 
 	var buf bytes.Buffer
-	p := New(&Options{Format: FormatTable, Output: &buf})
+	p := NewPrinter(&Options{Format: FormatTable, Output: &buf})
 	p.PrintRows(rows)
 
 	if !strings.Contains(buf.String(), "NULL") {
@@ -99,7 +99,7 @@ func TestPrinter_PrintRows_EmptyResult(t *testing.T) {
 	defer rows.Close()
 
 	var buf bytes.Buffer
-	p := New(&Options{Format: FormatJSON, Output: &buf})
+	p := NewPrinter(&Options{Format: FormatJSON, Output: &buf})
 	p.PrintRows(rows)
 
 	var result []map[string]any
@@ -109,8 +109,8 @@ func TestPrinter_PrintRows_EmptyResult(t *testing.T) {
 	}
 }
 
-func TestNew_DefaultOptions(t *testing.T) {
-	p := New(nil)
+func TestNewPrinter_DefaultOptions(t *testing.T) {
+	p := NewPrinter(nil)
 	if p.opts.Format != FormatTable {
 		t.Errorf("default format should be table, got %s", p.opts.Format)
 	}

@@ -1,5 +1,4 @@
-// Package printer provides output formatting for query results.
-package printer
+package output
 
 import (
 	"database/sql"
@@ -9,26 +8,15 @@ import (
 	"io"
 	"os"
 
-	"github.com/jedib0t/go-pretty/v6/table"
-	"github.com/jedib0t/go-pretty/v6/text"
+	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/lipgloss/table"
 )
 
-// Format represents the output format type.
-type Format string
-
-const (
-	FormatTable Format = "table"
-	FormatJSON  Format = "json"
-	FormatCSV   Format = "csv"
-)
-
-// Options configures the printer behavior.
 type Options struct {
 	Format Format
 	Output io.Writer
 }
 
-// DefaultOptions returns default printer options.
 func DefaultOptions() *Options {
 	return &Options{
 		Format: FormatTable,
@@ -36,13 +24,12 @@ func DefaultOptions() *Options {
 	}
 }
 
-// Printer handles output formatting.
 type Printer struct {
 	opts *Options
 }
 
-// New creates a new Printer with the given options.
-func New(opts *Options) *Printer {
+// Creates a new Printer with the given options.
+func NewPrinter(opts *Options) *Printer {
 	if opts == nil {
 		opts = DefaultOptions()
 	}
@@ -52,7 +39,7 @@ func New(opts *Options) *Printer {
 	return &Printer{opts: opts}
 }
 
-// PrintRows prints the query results in the configured format.
+// Prints SQL results.
 func (p *Printer) PrintRows(rows *sql.Rows) error {
 	columns, err := rows.Columns()
 	if err != nil {
@@ -74,7 +61,7 @@ func (p *Printer) PrintRows(rows *sql.Rows) error {
 	}
 }
 
-// scanRows scans all rows into a slice of slices.
+// Scans all rows into a slice of slices.
 func (p *Printer) scanRows(rows *sql.Rows, numCols int) ([][]any, error) {
 	var result [][]any
 
@@ -103,7 +90,7 @@ func (p *Printer) scanRows(rows *sql.Rows, numCols int) ([][]any, error) {
 	return result, nil
 }
 
-// normalizeValue converts database values to appropriate Go types.
+// Converts database values to appropriate Go types.
 func (p *Printer) normalizeValue(val any) any {
 	if val == nil {
 		return nil
@@ -122,38 +109,38 @@ func (p *Printer) normalizeValue(val any) any {
 	}
 }
 
-// printTable outputs data in table format.
+// Print result formatted as a table.
 func (p *Printer) printTable(columns []string, data [][]any) error {
-	t := table.NewWriter()
-	t.SetOutputMirror(p.opts.Output)
+	rows := make([][]string, len(data))
 
-	headerRow := make(table.Row, len(columns))
-	for i, col := range columns {
-		headerRow[i] = col
-	}
-	t.AppendHeader(headerRow)
-
-	t.SetStyle(table.StyleLight)
-	t.Style().Options.SeparateRows = true
-	t.Style().Format.Header = text.FormatDefault
-
-	for _, row := range data {
-		tableRow := make(table.Row, len(row))
-		for i, val := range row {
+	for i, row := range data {
+		r := make([]string, len(row))
+		for j, val := range row {
 			if val == nil {
-				tableRow[i] = "NULL"
+				r[j] = "(NULL)"
 			} else {
-				tableRow[i] = val
+				r[j] = fmt.Sprintf("%v", val)
 			}
 		}
-		t.AppendRow(tableRow)
+		rows[i] = r
 	}
 
-	t.Render()
+	t := table.New().
+		Border(lipgloss.NormalBorder()).
+		BorderStyle(lipgloss.NewStyle().Foreground(lipgloss.Color("240"))).
+		Headers(columns...).
+		Rows(rows...)
+
+	t.StyleFunc(func(row, col int) lipgloss.Style {
+		return lipgloss.NewStyle().Padding(0, 1)
+	})
+
+	fmt.Fprintln(p.opts.Output, t.Render())
+
 	return nil
 }
 
-// printJSON outputs data in JSON format.
+// Print result formatted as a JSON.
 func (p *Printer) printJSON(columns []string, data [][]any) error {
 	result := make([]map[string]any, len(data))
 
@@ -170,7 +157,7 @@ func (p *Printer) printJSON(columns []string, data [][]any) error {
 	return encoder.Encode(result)
 }
 
-// printCSV outputs data in CSV format.
+// Print result formatted as a CSV.
 func (p *Printer) printCSV(columns []string, data [][]any) error {
 	w := csv.NewWriter(p.opts.Output)
 	defer w.Flush()

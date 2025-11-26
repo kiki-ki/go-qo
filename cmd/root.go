@@ -3,53 +3,69 @@ package cmd
 
 import (
 	"fmt"
-	"io"
 	"os"
 
 	"github.com/spf13/cobra"
 
+	"github.com/kiki-ki/go-qo/internal/cli"
 	"github.com/kiki-ki/go-qo/internal/db"
-	"github.com/kiki-ki/go-qo/internal/parser"
-	"github.com/kiki-ki/go-qo/internal/printer"
+	"github.com/kiki-ki/go-qo/internal/input"
+	"github.com/kiki-ki/go-qo/internal/output"
+	"github.com/kiki-ki/go-qo/internal/tui"
 )
 
 const stdinTableName = "t"
 
 var (
 	outputFormat string
+	inputFormat  string
 	verbose      bool
+	queryFlag    string
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "qo [file1 file2...] <sql-query>",
+	Use:   "qo [file1 file2...] [sql-query]",
 	Short: "Execute SQL queries on JSON files",
 	Long: `qo is a command-line tool that allows you to query JSON files using SQL.
 
-Examples:
-  qo tests.json "SELECT * FROM tests"
-  qo companies.json users.json "SELECT c.name, u.name FROM companies c JOIN users u ON c.id = u.company_id"
-  qo data.json "SELECT * FROM data WHERE age > 30" --format json
+Interactive Mode:
+	qo data.json
+	cat data.json | qo
 
-Pipe from stdin (table name is 't'):
-  curl https://api.example.com/users | qo "SELECT * FROM t"
-  cat data.json | qo "SELECT name, age FROM t WHERE age > 30"`,
-	Args: cobra.MinimumNArgs(1),
+CLI Mode:
+	qo data.json "SELECT * FROM data"
+	cat data.json | qo "SELECT * FROM t"
 
+You can also provide the SQL via flag:
+	qo -q "SELECT * FROM data" data.json
+	cat data.json | qo -q "SELECT * FROM t"`,
+
+	Args: cobra.ArbitraryArgs,
 	RunE: runQuery,
 }
 
 func init() {
-	rootCmd.Flags().StringVarP(&outputFormat, "format", "f", "table", "Output format: table | json | csv")
+	rootCmd.Flags().StringVarP(&outputFormat, "output", "o", "table", "Output format: table (default) | json | csv")
+	rootCmd.Flags().StringVarP(&inputFormat, "input", "i", "json", "Input format: json (default)")
 	rootCmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "Show informational messages")
+	rootCmd.Flags().StringVarP(&queryFlag, "query", "q", "", "SQL query to execute (if omitted, TUI mode)")
 }
 
 func runQuery(cmd *cobra.Command, args []string) error {
-	// Initialize database
+	if !input.IsValidFormat(inputFormat) {
+		return fmt.Errorf("unsupported input format: %s (supported: %v)", inputFormat, input.Formats())
+	}
+	if !output.IsValidFormat(outputFormat) {
+		return fmt.Errorf("unsupported output format: %s (supported: %v)", outputFormat, output.Formats())
+	}
+
 	database, err := db.New()
 	if err != nil {
 		return fmt.Errorf("failed to initialize database: %w", err)
 	}
 	defer database.Close()
+
+	loader := input.NewLoader(database, input.Format(inputFormat), verbose)
 
 	// Check if stdin has data
 	stdinHasData, err := hasStdinData()
@@ -57,52 +73,57 @@ func runQuery(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	// --- 引数の解析とモード判定 ---
 	var query string
 	var filePaths []string
+	var isTUI bool
 
-	if stdinHasData {
-		// stdin mode: only query is required
-		query = args[len(args)-1]
-		filePaths = args[:len(args)-1]
+	// Priority: --query/-q flag > positional args
+	if queryFlag != "" {
+		query = queryFlag
+		filePaths = args
+		if stdinHasData {
+			if err := loader.LoadStdin(stdinTableName); err != nil {
+				return err
+			}
+		}
+	} else if stdinHasData {
+		if len(args) > 0 {
+			query = args[0]
+		} else {
+			isTUI = true
+		}
 
-		// Load stdin data
-		if err := loadStdin(database); err != nil {
+		if err := loader.LoadStdin(stdinTableName); err != nil {
 			return err
 		}
+
 	} else {
-		// file mode: at least one file and query required
-		if len(args) < 2 {
-			return fmt.Errorf("requires at least one file and a query, or pipe data via stdin")
+		if len(args) == 0 {
+			isTUI = true
+		} else if len(args) == 1 {
+			filePaths = args
+			isTUI = true
+		} else {
+			query = args[len(args)-1]
+			filePaths = args[:len(args)-1]
 		}
-		query = args[len(args)-1]
-		filePaths = args[:len(args)-1]
 	}
 
 	// Load files into database (if any)
 	if len(filePaths) > 0 {
-		if err := loadFiles(database, filePaths); err != nil {
+		if err := loader.LoadFiles(filePaths); err != nil {
 			return err
 		}
 	}
 
-	// Execute query
-	rows, err := database.Query(query)
-	if err != nil {
-		return fmt.Errorf("query execution failed: %w", err)
+	if isTUI {
+		return tui.Run(database.DB)
 	}
-	defer rows.Close()
-
-	// Print results
-	p := printer.New(&printer.Options{
-		Format: printer.Format(outputFormat),
+	return cli.Run(database.DB, query, &cli.Options{
+		Format: output.Format(outputFormat),
 		Output: os.Stdout,
 	})
-
-	if err := p.PrintRows(rows); err != nil {
-		return fmt.Errorf("failed to print results: %w", err)
-	}
-
-	return nil
 }
 
 // hasStdinData checks if there's data available on stdin.
@@ -114,59 +135,6 @@ func hasStdinData() (bool, error) {
 	return (stat.Mode() & os.ModeCharDevice) == 0, nil
 }
 
-// loadStdin loads JSON data from stdin into the database.
-func loadStdin(database *db.DB) error {
-	if verbose {
-		fmt.Fprintln(os.Stderr, "")
-		fmt.Fprintln(os.Stderr, "### Tables ###")
-		fmt.Fprintln(os.Stderr, "")
-	}
-
-	data, err := io.ReadAll(os.Stdin)
-	if err != nil {
-		return fmt.Errorf("failed to read stdin: %w", err)
-	}
-
-	parsed, err := parser.ParseJSONBytes(data)
-	if err != nil {
-		return fmt.Errorf("failed to parse stdin: %w", err)
-	}
-
-	if err := database.LoadData(stdinTableName, parsed); err != nil {
-		return fmt.Errorf("failed to load stdin data: %w", err)
-	}
-
-	if verbose {
-		fmt.Fprintf(os.Stderr, "- stdin → %s (%d rows, %d columns)\n",
-			stdinTableName, len(parsed.Rows), len(parsed.Columns))
-	}
-
-	return nil
-}
-
-func loadFiles(database *db.DB, filePaths []string) error {
-	for _, path := range filePaths {
-		data, err := parser.ParseFile(path)
-		if err != nil {
-			return fmt.Errorf("failed to parse %s: %w", path, err)
-		}
-
-		tableName := db.TableNameFromPath(path)
-
-		if err := database.LoadData(tableName, data); err != nil {
-			return fmt.Errorf("failed to load table %s: %w", tableName, err)
-		}
-
-		if verbose {
-			fmt.Fprintf(os.Stderr, "- %s → %s (%d rows, %d columns)\n",
-				path, tableName, len(data.Rows), len(data.Columns))
-		}
-	}
-
-	return nil
-}
-
-// Execute runs the root command.
 func Execute() error {
 	return rootCmd.Execute()
 }
