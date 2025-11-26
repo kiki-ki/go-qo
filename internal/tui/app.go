@@ -29,6 +29,11 @@ var (
 	errorStyle  = lipgloss.NewStyle().Foreground(colorFontError)
 )
 
+// Result holds the final query when exiting TUI.
+type Result struct {
+	Query string
+}
+
 // Model represents the TUI application state.
 type Model struct {
 	db              *sql.DB
@@ -42,6 +47,12 @@ type Model struct {
 	colScrollOffset int // column scroll offset (number of columns to skip)
 	allColumns      []table.Column
 	allRows         []table.Row
+	result          *Result // set when exiting with a query to execute
+}
+
+// Result returns the final query result.
+func (m Model) Result() *Result {
+	return m.result
 }
 
 // NewModel creates a new TUI model.
@@ -140,6 +151,12 @@ func (m *Model) handleKeyMsg(msg tea.KeyMsg) (tea.Cmd, bool) {
 	switch msg.Type {
 	case tea.KeyCtrlC, tea.KeyEsc:
 		return nil, true
+
+	case tea.KeyEnter:
+		if m.mode == ModeQuery && m.textInput.Value() != "" {
+			m.result = &Result{Query: m.textInput.Value()}
+			return nil, true
+		}
 
 	case tea.KeyTab:
 		return m.toggleMode(), false
@@ -277,9 +294,15 @@ func (m Model) renderError() string {
 	return errorStyle.Render(fmt.Sprintf("\nError: %v", m.err))
 }
 
-// Run starts the TUI application.
-func Run(db *sql.DB, tableNames []string) error {
+// Run starts the TUI application and returns the final query if any.
+func Run(db *sql.DB, tableNames []string) (*Result, error) {
 	p := tea.NewProgram(NewModel(db, tableNames), tea.WithAltScreen())
-	_, err := p.Run()
-	return err
+	m, err := p.Run()
+	if err != nil {
+		return nil, err
+	}
+	if model, ok := m.(Model); ok {
+		return model.result, nil
+	}
+	return nil, nil
 }

@@ -133,7 +133,14 @@ func loadData(loader *input.Loader, cfg *runConfig, hasStdinData bool) error {
 // TUI mode is used when query is empty, CLI mode when query is provided via -q flag.
 func execute(database *db.DB, cfg *runConfig) error {
 	if cfg.query == "" {
-		return tui.Run(database.DB, cfg.tableNames)
+		result, err := tui.Run(database.DB, cfg.tableNames)
+		if err != nil {
+			return err
+		}
+		if result == nil || result.Query == "" {
+			return nil
+		}
+		cfg.query = result.Query
 	}
 	return cli.Run(database.DB, cfg.query, &cli.Options{
 		Format: output.Format(outputFormat),

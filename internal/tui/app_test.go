@@ -122,3 +122,26 @@ func TestModel_View_ErrorDisplay(t *testing.T) {
 		t.Error("expected error message in view for invalid SQL")
 	}
 }
+
+func TestModel_Update_EnterReturnsResult(t *testing.T) {
+	db := testutil.SetupTestDB(t)
+	defer db.Close()
+
+	m := tui.NewModel(db, []string{"test"})
+
+	// Press Enter in query mode should quit with result
+	updated, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	if cmd == nil {
+		t.Error("expected quit command on Enter")
+	}
+
+	// Verify result contains query
+	model := updated.(tui.Model)
+	result := model.Result()
+	if result == nil {
+		t.Fatal("expected non-nil result")
+	}
+	if !strings.Contains(result.Query, "SELECT") {
+		t.Errorf("expected query to contain SELECT, got %q", result.Query)
+	}
+}
