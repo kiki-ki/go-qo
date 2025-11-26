@@ -105,10 +105,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.KeyMsg:
 		switch msg.Type {
-		case tea.KeyCtrlC, tea.KeyEsc:
+		case tea.KeyCtrlC, tea.KeyEsc: // Quit
 			return m, tea.Quit
-		case tea.KeyTab:
-			// Toggle mode between query and table
+		case tea.KeyTab: // Switch mode
 			if m.mode == ModeQuery {
 				m.mode = ModeTable
 				m.textInput.Blur()
@@ -200,6 +199,17 @@ func (m Model) View() string {
 	modeStyle := lipgloss.NewStyle().Foreground(colorFontAccent).Bold(true)
 
 	header := fmt.Sprintf(" [%s] %s", modeStyle.Render(string(m.mode)), m.mode.CommandsHint())
+
+	if m.mode == ModeTable {
+		// position info
+		if len(m.allRows) != 0 {
+			row := m.table.Cursor() + 1
+			col := m.colScrollOffset + 1
+			header += fmt.Sprintf(" (row: %d/%d, col: %d/%d)", row, len(m.allRows), col, len(m.allColumns))
+		} else {
+			header += " (no data)"
+		}
+	}
 
 	return baseStyle.Render(
 		lipgloss.JoinVertical(lipgloss.Left,

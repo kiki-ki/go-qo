@@ -26,7 +26,7 @@ func (m Mode) CommandsHint() string {
 	result := ""
 	for i, cmd := range cmds {
 		if i > 0 {
-			result += " | "
+			result += ", "
 		}
 		result += cmd.String()
 	}
@@ -35,14 +35,14 @@ func (m Mode) CommandsHint() string {
 
 var (
 	baseModeCommands = []modeCommand{
-		{key: "Tab", message: "Switch mode"},
-		{key: "Esc", message: "Quit"},
+		{key: "Tab", message: "switch mode"},
+		{key: "Esc", message: "quit"},
 	}
 	queryModeCommands = slices.Concat(baseModeCommands, []modeCommand{
-		{key: "Enter", message: "Execute Query"},
+		{key: "Enter", message: "execute query"},
 	})
 	tableModeCommands = slices.Concat(baseModeCommands, []modeCommand{
-		{key: "Arrows", message: "Scroll data"},
+		{key: "Arrows", message: "scroll"},
 	})
 )
 
