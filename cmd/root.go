@@ -19,24 +19,19 @@ const stdinTableName = "t"
 var (
 	outputFormat string
 	inputFormat  string
-	verbose      bool
 	queryFlag    string
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "qo [file1 file2...] [sql-query]",
+	Use:   "qo [files...]",
 	Short: "Execute SQL queries on JSON files",
 	Long: `qo is a command-line tool that allows you to query JSON files using SQL.
 
-Interactive Mode:
+TUI Mode (default):
 	qo data.json
 	cat data.json | qo
 
-CLI Mode:
-	qo data.json "SELECT * FROM data"
-	cat data.json | qo "SELECT * FROM t"
-
-You can also provide the SQL via flag:
+CLI Mode (with -q flag):
 	qo -q "SELECT * FROM data" data.json
 	cat data.json | qo -q "SELECT * FROM t"`,
 
@@ -47,16 +42,18 @@ You can also provide the SQL via flag:
 func init() {
 	rootCmd.Flags().StringVarP(&outputFormat, "output", "o", "table", "Output format: table (default) | json | csv")
 	rootCmd.Flags().StringVarP(&inputFormat, "input", "i", "json", "Input format: json (default)")
-	rootCmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "Show informational messages")
 	rootCmd.Flags().StringVarP(&queryFlag, "query", "q", "", "SQL query to execute (if omitted, TUI mode)")
 }
 
+// runConfig holds the parsed configuration for a query run.
+type runConfig struct {
+	query     string
+	filePaths []string
+}
+
 func runQuery(cmd *cobra.Command, args []string) error {
-	if !input.IsValidFormat(inputFormat) {
-		return fmt.Errorf("unsupported input format: %s (supported: %v)", inputFormat, input.Formats())
-	}
-	if !output.IsValidFormat(outputFormat) {
-		return fmt.Errorf("unsupported output format: %s (supported: %v)", outputFormat, output.Formats())
+	if err := validateFormats(); err != nil {
+		return err
 	}
 
 	database, err := db.New()
@@ -65,74 +62,63 @@ func runQuery(cmd *cobra.Command, args []string) error {
 	}
 	defer database.Close()
 
-	loader := input.NewLoader(database, input.Format(inputFormat), verbose)
+	loader := input.NewLoader(database, input.Format(inputFormat))
 
-	// Check if stdin has data
-	stdinHasData, err := hasStdinData()
+	hasStdinData, err := input.HasStdinData()
 	if err != nil {
 		return err
 	}
 
-	// --- 引数の解析とモード判定 ---
-	var query string
-	var filePaths []string
-	var isTUI bool
+	cfg := runConfig{
+		query:     queryFlag,
+		filePaths: args,
+	}
 
-	// Priority: --query/-q flag > positional args
-	if queryFlag != "" {
-		query = queryFlag
-		filePaths = args
-		if stdinHasData {
-			if err := loader.LoadStdin(stdinTableName); err != nil {
-				return err
-			}
-		}
-	} else if stdinHasData {
-		if len(args) > 0 {
-			query = args[0]
-		} else {
-			isTUI = true
-		}
+	if err := loadData(loader, cfg, hasStdinData); err != nil {
+		return err
+	}
 
+	return execute(database, cfg)
+}
+
+// validateFormats checks if input/output formats are valid.
+func validateFormats() error {
+	if !input.IsValidFormat(inputFormat) {
+		return fmt.Errorf("unsupported input format: %s (supported: %v)", inputFormat, input.Formats())
+	}
+	if !output.IsValidFormat(outputFormat) {
+		return fmt.Errorf("unsupported output format: %s (supported: %v)", outputFormat, output.Formats())
+	}
+	return nil
+}
+
+// loadData loads data from stdin and/or files into the database.
+func loadData(loader *input.Loader, cfg runConfig, hasStdinData bool) error {
+	if hasStdinData {
 		if err := loader.LoadStdin(stdinTableName); err != nil {
 			return err
 		}
-
-	} else {
-		if len(args) == 0 {
-			isTUI = true
-		} else if len(args) == 1 {
-			filePaths = args
-			isTUI = true
-		} else {
-			query = args[len(args)-1]
-			filePaths = args[:len(args)-1]
-		}
 	}
 
-	// Load files into database (if any)
-	if len(filePaths) > 0 {
-		if err := loader.LoadFiles(filePaths); err != nil {
+	if len(cfg.filePaths) > 0 {
+		if err := loader.LoadFiles(cfg.filePaths); err != nil {
 			return err
 		}
 	}
 
-	if isTUI {
+	return nil
+}
+
+// execute runs either TUI or CLI mode based on configuration.
+// TUI mode is used when query is empty, CLI mode when query is provided via -q flag.
+func execute(database *db.DB, cfg runConfig) error {
+	if cfg.query == "" {
 		return tui.Run(database.DB)
 	}
-	return cli.Run(database.DB, query, &cli.Options{
+	return cli.Run(database.DB, cfg.query, &cli.Options{
 		Format: output.Format(outputFormat),
 		Output: os.Stdout,
 	})
-}
-
-// hasStdinData checks if there's data available on stdin.
-func hasStdinData() (bool, error) {
-	stat, err := os.Stdin.Stat()
-	if err != nil {
-		return false, fmt.Errorf("failed to stat stdin: %w", err)
-	}
-	return (stat.Mode() & os.ModeCharDevice) == 0, nil
 }
 
 func Execute() error {

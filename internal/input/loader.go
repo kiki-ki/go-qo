@@ -11,45 +11,46 @@ import (
 
 // Loader handles loading data into the database.
 type Loader struct {
-	db      *db.DB
-	format  Format
-	verbose bool
-	output  io.Writer // for verbose output
+	db     *db.DB
+	format Format
 }
 
 // NewLoader creates a new Loader.
-func NewLoader(database *db.DB, format Format, verbose bool) *Loader {
+func NewLoader(database *db.DB, format Format) *Loader {
 	return &Loader{
-		db:      database,
-		format:  format,
-		verbose: verbose,
-		output:  os.Stderr,
+		db:     database,
+		format: format,
 	}
+}
+
+// HasStdinData checks if there's data available on stdin.
+func HasStdinData() (bool, error) {
+	stat, err := os.Stdin.Stat()
+	if err != nil {
+		return false, fmt.Errorf("failed to stat stdin: %w", err)
+	}
+	return (stat.Mode() & os.ModeCharDevice) == 0, nil
 }
 
 // LoadStdin loads data from stdin into the database.
 func (l *Loader) LoadStdin(tableName string) error {
-	if l.verbose {
-		fmt.Fprintln(l.output, "Loading stdin...")
-	}
+	return l.LoadReader(os.Stdin, tableName)
+}
 
-	data, err := io.ReadAll(os.Stdin)
+// LoadReader loads data from an io.Reader into the database.
+func (l *Loader) LoadReader(r io.Reader, tableName string) error {
+	data, err := io.ReadAll(r)
 	if err != nil {
-		return fmt.Errorf("failed to read stdin: %w", err)
+		return fmt.Errorf("failed to read input: %w", err)
 	}
 
 	parsed, err := l.parseBytes(data)
 	if err != nil {
-		return fmt.Errorf("failed to parse stdin: %w", err)
+		return fmt.Errorf("failed to parse input: %w", err)
 	}
 
 	if err := l.db.LoadData(tableName, parsed); err != nil {
-		return fmt.Errorf("failed to load stdin data: %w", err)
-	}
-
-	if l.verbose {
-		fmt.Fprintf(l.output, "  %s (%d rows, %d columns)\n",
-			tableName, len(parsed.Rows), len(parsed.Columns))
+		return fmt.Errorf("failed to load data: %w", err)
 	}
 
 	return nil
@@ -57,10 +58,6 @@ func (l *Loader) LoadStdin(tableName string) error {
 
 // LoadFiles loads data from files into the database.
 func (l *Loader) LoadFiles(filePaths []string) error {
-	if l.verbose {
-		fmt.Fprintln(l.output, "Loading files...")
-	}
-
 	for _, path := range filePaths {
 		parsed, err := l.parseFile(path)
 		if err != nil {
@@ -71,11 +68,6 @@ func (l *Loader) LoadFiles(filePaths []string) error {
 
 		if err := l.db.LoadData(tableName, parsed); err != nil {
 			return fmt.Errorf("failed to load table %s: %w", tableName, err)
-		}
-
-		if l.verbose {
-			fmt.Fprintf(l.output, "  %s → %s (%d rows, %d columns)\n",
-				path, tableName, len(parsed.Rows), len(parsed.Columns))
 		}
 	}
 

@@ -1,9 +1,10 @@
-package parser
+package parser_test
 
 import (
-	"os"
-	"path/filepath"
 	"testing"
+
+	"github.com/kiki-ki/go-qo/internal/parser"
+	"github.com/kiki-ki/go-qo/testutil"
 )
 
 func TestJSONParser_ParseBytes(t *testing.T) {
@@ -13,14 +14,14 @@ func TestJSONParser_ParseBytes(t *testing.T) {
 		wantRows    int
 		wantCols    int
 		wantErr     bool
-		checkValues func(t *testing.T, data *ParsedData)
+		checkValues func(t *testing.T, data *parser.ParsedData)
 	}{
 		{
 			name:     "array of objects",
 			input:    `[{"id": 1, "name": "Alice"}, {"id": 2, "name": "Bob"}]`,
 			wantRows: 2,
 			wantCols: 2,
-			checkValues: func(t *testing.T, data *ParsedData) {
+			checkValues: func(t *testing.T, data *parser.ParsedData) {
 				if data.Rows[0][1] != "Alice" {
 					t.Errorf("expected Alice, got %v", data.Rows[0][1])
 				}
@@ -31,11 +32,11 @@ func TestJSONParser_ParseBytes(t *testing.T) {
 			input:    `{"id": 42, "value": 3.14}`,
 			wantRows: 1,
 			wantCols: 2,
-			checkValues: func(t *testing.T, data *ParsedData) {
-				if data.Columns[0].Type != TypeInteger {
+			checkValues: func(t *testing.T, data *parser.ParsedData) {
+				if data.Columns[0].Type != parser.TypeInteger {
 					t.Errorf("expected INTEGER, got %v", data.Columns[0].Type)
 				}
-				if data.Columns[1].Type != TypeReal {
+				if data.Columns[1].Type != parser.TypeReal {
 					t.Errorf("expected REAL, got %v", data.Columns[1].Type)
 				}
 			},
@@ -45,7 +46,7 @@ func TestJSONParser_ParseBytes(t *testing.T) {
 			input:    `[{"id": 1, "name": "Alice"}, {"id": 2, "name": null}]`,
 			wantRows: 2,
 			wantCols: 2,
-			checkValues: func(t *testing.T, data *ParsedData) {
+			checkValues: func(t *testing.T, data *parser.ParsedData) {
 				if data.Rows[1][1] != nil {
 					t.Errorf("expected nil, got %v", data.Rows[1][1])
 				}
@@ -56,7 +57,7 @@ func TestJSONParser_ParseBytes(t *testing.T) {
 			input:    `[{"id": 1, "name": "Alice"}, {"id": 2}]`,
 			wantRows: 2,
 			wantCols: 2,
-			checkValues: func(t *testing.T, data *ParsedData) {
+			checkValues: func(t *testing.T, data *parser.ParsedData) {
 				if data.Rows[1][1] != nil {
 					t.Errorf("expected nil for missing field, got %v", data.Rows[1][1])
 				}
@@ -67,12 +68,12 @@ func TestJSONParser_ParseBytes(t *testing.T) {
 			input:    `[{"id": 1, "meta": {"key": "value"}, "tags": ["a", "b"]}]`,
 			wantRows: 1,
 			wantCols: 3,
-			checkValues: func(t *testing.T, data *ParsedData) {
+			checkValues: func(t *testing.T, data *parser.ParsedData) {
 				for _, col := range data.Columns {
-					if col.Name == "meta" && col.Type != TypeJSON {
+					if col.Name == "meta" && col.Type != parser.TypeJSON {
 						t.Errorf("expected JSON type for meta")
 					}
-					if col.Name == "tags" && col.Type != TypeJSON {
+					if col.Name == "tags" && col.Type != parser.TypeJSON {
 						t.Errorf("expected JSON type for tags")
 					}
 				}
@@ -83,8 +84,8 @@ func TestJSONParser_ParseBytes(t *testing.T) {
 			input:    `[{"value": 1}, {"value": 2.5}]`,
 			wantRows: 2,
 			wantCols: 1,
-			checkValues: func(t *testing.T, data *ParsedData) {
-				if data.Columns[0].Type != TypeReal {
+			checkValues: func(t *testing.T, data *parser.ParsedData) {
+				if data.Columns[0].Type != parser.TypeReal {
 					t.Errorf("expected REAL after widening, got %v", data.Columns[0].Type)
 				}
 			},
@@ -94,10 +95,10 @@ func TestJSONParser_ParseBytes(t *testing.T) {
 			input:    `[{"int": 1, "float": 3.14, "bool": true, "str": "hello", "null": null}]`,
 			wantRows: 1,
 			wantCols: 5,
-			checkValues: func(t *testing.T, data *ParsedData) {
-				types := map[string]DataType{
-					"int": TypeInteger, "float": TypeReal,
-					"bool": TypeBoolean, "str": TypeText, "null": TypeNull,
+			checkValues: func(t *testing.T, data *parser.ParsedData) {
+				types := map[string]parser.DataType{
+					"int": parser.TypeInteger, "float": parser.TypeReal,
+					"bool": parser.TypeBoolean, "str": parser.TypeText, "null": parser.TypeNull,
 				}
 				for _, col := range data.Columns {
 					if expected, ok := types[col.Name]; ok && col.Type != expected {
@@ -118,10 +119,9 @@ func TestJSONParser_ParseBytes(t *testing.T) {
 		},
 	}
 
-	p := &JSONParser{}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			data, err := p.ParseBytes([]byte(tt.input))
+			data, err := parser.ParseJSONBytes([]byte(tt.input))
 			if tt.wantErr {
 				if err == nil {
 					t.Error("expected error, got nil")
@@ -144,12 +144,11 @@ func TestJSONParser_ParseBytes(t *testing.T) {
 	}
 }
 
-func TestJSONParser_Parse_File(t *testing.T) {
+func TestParseFile(t *testing.T) {
 	content := `[{"id": 1, "name": "Alice"}, {"id": 2, "name": "Bob"}]`
-	path := createTempJSON(t, content)
+	path := testutil.CreateTempJSON(t, content)
 
-	p := &JSONParser{}
-	data, err := p.Parse(path)
+	data, err := parser.ParseFile(path)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -159,35 +158,23 @@ func TestJSONParser_Parse_File(t *testing.T) {
 	}
 }
 
-func TestJSONParser_Parse_FileNotFound(t *testing.T) {
-	p := &JSONParser{}
-	_, err := p.Parse("/nonexistent/file.json")
+func TestParseFile_FileNotFound(t *testing.T) {
+	_, err := parser.ParseFile("/nonexistent/file.json")
 	if err == nil {
 		t.Error("expected error for nonexistent file")
 	}
 }
 
-func TestParseFile(t *testing.T) {
-	path := createTempJSON(t, `[{"test": 1}]`)
-	data, err := ParseFile(path)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if len(data.Rows) != 1 {
-		t.Errorf("expected 1 row, got %d", len(data.Rows))
-	}
-}
-
 func TestGetParser_UnsupportedFormat(t *testing.T) {
-	_, err := GetParser("file.xml")
+	_, err := parser.GetParser("file.xml")
 	if err == nil {
 		t.Error("expected error for unsupported format")
 	}
 }
 
 func TestParsedData_ColumnNames(t *testing.T) {
-	pd := &ParsedData{
-		Columns: []Column{{Name: "id"}, {Name: "name"}},
+	pd := &parser.ParsedData{
+		Columns: []parser.Column{{Name: "id"}, {Name: "name"}},
 	}
 	names := pd.ColumnNames()
 	if len(names) != 2 || names[0] != "id" || names[1] != "name" {
@@ -197,28 +184,19 @@ func TestParsedData_ColumnNames(t *testing.T) {
 
 func TestDataType_String(t *testing.T) {
 	tests := []struct {
-		dt   DataType
+		dt   parser.DataType
 		want string
 	}{
-		{TypeText, "TEXT"},
-		{TypeInteger, "INTEGER"},
-		{TypeReal, "REAL"},
-		{TypeBoolean, "INTEGER"},
-		{TypeJSON, "TEXT"},
-		{TypeNull, "TEXT"},
+		{parser.TypeText, "TEXT"},
+		{parser.TypeInteger, "INTEGER"},
+		{parser.TypeReal, "REAL"},
+		{parser.TypeBoolean, "INTEGER"},
+		{parser.TypeJSON, "TEXT"},
+		{parser.TypeNull, "TEXT"},
 	}
 	for _, tt := range tests {
 		if got := tt.dt.String(); got != tt.want {
 			t.Errorf("DataType(%d).String() = %q, want %q", tt.dt, got, tt.want)
 		}
 	}
-}
-
-func createTempJSON(t *testing.T, content string) string {
-	t.Helper()
-	path := filepath.Join(t.TempDir(), "test.json")
-	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
-		t.Fatalf("failed to create temp file: %v", err)
-	}
-	return path
 }

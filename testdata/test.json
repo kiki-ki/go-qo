@@ -1,6 +1,0 @@
-[
-  { "id": 1, "name": "Alice", "tags": ["admin", "dev"], "meta": { "login": 10 } },
-  { "id": 2, "name": "Bob", "age": 30 },
-  { "id": 3, "tags": [] },
-  { "id": 4, "name": "Dave", "meta": { "login": 0, "active": false } }
-]

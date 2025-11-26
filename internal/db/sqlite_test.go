@@ -1,20 +1,21 @@
-package db
+package db_test
 
 import (
 	"testing"
 
+	"github.com/kiki-ki/go-qo/internal/db"
 	"github.com/kiki-ki/go-qo/internal/parser"
 )
 
 func TestNew(t *testing.T) {
-	db, err := New()
+	database, err := db.New()
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	defer db.Close()
+	defer database.Close()
 
 	var result int
-	if err := db.QueryRow("SELECT 1").Scan(&result); err != nil {
+	if err := database.QueryRow("SELECT 1").Scan(&result); err != nil {
 		t.Fatalf("query failed: %v", err)
 	}
 	if result != 1 {
@@ -23,11 +24,11 @@ func TestNew(t *testing.T) {
 }
 
 func TestDB_LoadData(t *testing.T) {
-	db, err := New()
+	database, err := db.New()
 	if err != nil {
 		t.Fatalf("failed to create db: %v", err)
 	}
-	defer db.Close()
+	defer database.Close()
 
 	tests := []struct {
 		name    string
@@ -66,7 +67,7 @@ func TestDB_LoadData(t *testing.T) {
 	for i, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tableName := "test_" + string(rune('a'+i))
-			err := db.LoadData(tableName, tt.data)
+			err := database.LoadData(tableName, tt.data)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("LoadData() error = %v, wantErr %v", err, tt.wantErr)
 			}
@@ -88,7 +89,7 @@ func TestTableNameFromPath(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		if got := TableNameFromPath(tt.path); got != tt.want {
+		if got := db.TableNameFromPath(tt.path); got != tt.want {
 			t.Errorf("TableNameFromPath(%q) = %q, want %q", tt.path, got, tt.want)
 		}
 	}

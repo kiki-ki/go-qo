@@ -31,7 +31,6 @@ qo [file1 file2...] <sql-query> [flags]
 | Flag | Short | Description |
 |------|-------|-------------|
 | `--format` | `-f` | Output format: `table` (default), `json`, `csv` |
-| `--verbose` | `-v` | Show informational messages |
 
 ## Examples
 

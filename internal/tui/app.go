@@ -10,39 +10,33 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-// スタイル定義 (Lipgloss)
-var (
-	baseStyle = lipgloss.NewStyle().
-		BorderStyle(lipgloss.NormalBorder()).
-		BorderForeground(lipgloss.Color("240"))
+var baseStyle = lipgloss.NewStyle().
+	BorderStyle(lipgloss.NormalBorder()).
+	BorderForeground(lipgloss.Color("240"))
 
-	// ヘッダーや選択行のスタイルもここで定義できます
-)
-
+// Model represents the TUI application state.
 type Model struct {
 	db        *sql.DB
-	table     table.Model     // テーブルコンポーネント
-	textInput textinput.Model // 入力コンポーネント
-	err       error           // SQLエラー用
+	table     table.Model
+	textInput textinput.Model
+	err       error
 }
 
+// NewModel creates a new TUI model.
 func NewModel(db *sql.DB) Model {
-	// 1. 入力欄の初期化
 	ti := textinput.New()
 	ti.Placeholder = "SQL Query..."
 	ti.Focus()
 	ti.CharLimit = 1000
 	ti.Width = 100
 
-	// 2. テーブルの初期化
 	t := table.New(
 		table.WithColumns([]table.Column{{Title: "Results", Width: 20}}),
 		table.WithRows([]table.Row{}),
-		table.WithFocused(false), // 最初はフォーカスしない(入力欄優先)
-		table.WithHeight(10),     // 表示する行数
+		table.WithFocused(false),
+		table.WithHeight(10),
 	)
 
-	// テーブルの見た目カスタマイズ
 	s := table.DefaultStyles()
 	s.Header = s.Header.
 		BorderStyle(lipgloss.NormalBorder()).
@@ -74,9 +68,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.Type {
 		case tea.KeyCtrlC, tea.KeyEsc:
 			return m, tea.Quit
-
-		// Tabキーでフォーカス切り替え (入力欄 <-> テーブル)
 		case tea.KeyTab:
+			// Toggle focus between input and table
 			if m.textInput.Focused() {
 				m.textInput.Blur()
 				m.table.Focus()
@@ -87,30 +80,23 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 
-	// コンポーネントのアップデート
 	m.table, _ = m.table.Update(msg)
 	m.textInput, cmd = m.textInput.Update(msg)
 
-	// ★リアルタイムSQL実行ロジック
-	// 入力欄にフォーカスがある時だけ実行を試みる
+	// Execute query in real-time when input is focused
 	if m.textInput.Focused() {
 		query := m.textInput.Value()
-		// クエリが空なら何もしない
 		if query != "" {
 			rows, err := m.db.Query(query)
 			if err == nil {
-				// 成功したらテーブルを更新
 				defer rows.Close()
-				cols, tableRows, err := sqlRowsToTable(rows)
+				cols, tableRows, err := SQLRowsToTable(rows)
 				if err == nil {
 					m.table.SetColumns(cols)
 					m.table.SetRows(tableRows)
-					m.err = nil // エラーなし
+					m.err = nil
 				}
 			} else {
-				// SQL構文エラーなどは画面に出してもいいが、
-				// 入力中は頻発するので一旦内部保持のみにするか、
-				// ステータスバーに出すのが一般的
 				m.err = err
 			}
 		}
@@ -120,7 +106,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) View() string {
-	// エラー表示エリア
 	errView := ""
 	if m.err != nil {
 		errView = lipgloss.NewStyle().Foreground(lipgloss.Color("9")).Render(fmt.Sprintf("\nError: %v", m.err))
@@ -132,15 +117,14 @@ func (m Model) View() string {
 			m.textInput.View(),
 			errView,
 			"\n",
-			m.table.View(), // テーブル表示
+			m.table.View(),
 		),
 	) + "\n"
 }
 
+// Run starts the TUI application.
 func Run(db *sql.DB) error {
-	p := tea.NewProgram(NewModel(db), tea.WithAltScreen()) // AltScreen: 全画面モード
-	if _, err := p.Run(); err != nil {
-		return err
-	}
-	return nil
+	p := tea.NewProgram(NewModel(db), tea.WithAltScreen())
+	_, err := p.Run()
+	return err
 }

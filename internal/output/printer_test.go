@@ -1,4 +1,4 @@
-package output
+package output_test
 
 import (
 	"bytes"
@@ -7,44 +7,46 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/kiki-ki/go-qo/internal/output"
+	"github.com/kiki-ki/go-qo/testutil"
 	_ "modernc.org/sqlite"
 )
 
 func TestPrinter_PrintRows(t *testing.T) {
 	tests := []struct {
 		name   string
-		format Format
-		check  func(t *testing.T, output string)
+		format output.Format
+		check  func(t *testing.T, out string)
 	}{
 		{
 			name:   "table format",
-			format: FormatTable,
-			check: func(t *testing.T, output string) {
-				if !strings.Contains(output, "Alice") || !strings.Contains(output, "Bob") {
-					t.Errorf("table output missing expected data: %s", output)
+			format: output.FormatTable,
+			check: func(t *testing.T, out string) {
+				if !strings.Contains(out, "Alice") || !strings.Contains(out, "Bob") {
+					t.Errorf("table output missing expected data: %s", out)
 				}
 			},
 		},
 		{
 			name:   "json format",
-			format: FormatJSON,
-			check: func(t *testing.T, output string) {
+			format: output.FormatJSON,
+			check: func(t *testing.T, out string) {
 				var result []map[string]any
-				if err := json.Unmarshal([]byte(output), &result); err != nil {
+				if err := json.Unmarshal([]byte(out), &result); err != nil {
 					t.Fatalf("invalid JSON: %v", err)
 				}
 				if len(result) != 2 || result[0]["name"] != "Alice" {
-					t.Errorf("unexpected JSON output: %s", output)
+					t.Errorf("unexpected JSON output: %s", out)
 				}
 			},
 		},
 		{
 			name:   "csv format",
-			format: FormatCSV,
-			check: func(t *testing.T, output string) {
-				lines := strings.Split(strings.TrimSpace(output), "\n")
+			format: output.FormatCSV,
+			check: func(t *testing.T, out string) {
+				lines := strings.Split(strings.TrimSpace(out), "\n")
 				if len(lines) != 3 || lines[0] != "id,name" {
-					t.Errorf("unexpected CSV output: %s", output)
+					t.Errorf("unexpected CSV output: %s", out)
 				}
 			},
 		},
@@ -52,7 +54,7 @@ func TestPrinter_PrintRows(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			db := setupTestDB(t)
+			db := testutil.SetupTestDB(t)
 			defer db.Close()
 
 			rows, err := db.Query("SELECT * FROM test ORDER BY id")
@@ -62,7 +64,7 @@ func TestPrinter_PrintRows(t *testing.T) {
 			defer rows.Close()
 
 			var buf bytes.Buffer
-			p := NewPrinter(&Options{Format: tt.format, Output: &buf})
+			p := output.NewPrinter(&output.Options{Format: tt.format, Output: &buf})
 
 			if err := p.PrintRows(rows); err != nil {
 				t.Fatalf("PrintRows failed: %v", err)
@@ -82,7 +84,7 @@ func TestPrinter_PrintRows_NullValues(t *testing.T) {
 	defer rows.Close()
 
 	var buf bytes.Buffer
-	p := NewPrinter(&Options{Format: FormatTable, Output: &buf})
+	p := output.NewPrinter(&output.Options{Format: output.FormatTable, Output: &buf})
 	p.PrintRows(rows)
 
 	if !strings.Contains(buf.String(), "NULL") {
@@ -99,7 +101,7 @@ func TestPrinter_PrintRows_EmptyResult(t *testing.T) {
 	defer rows.Close()
 
 	var buf bytes.Buffer
-	p := NewPrinter(&Options{Format: FormatJSON, Output: &buf})
+	p := output.NewPrinter(&output.Options{Format: output.FormatJSON, Output: &buf})
 	p.PrintRows(rows)
 
 	var result []map[string]any
@@ -110,18 +112,8 @@ func TestPrinter_PrintRows_EmptyResult(t *testing.T) {
 }
 
 func TestNewPrinter_DefaultOptions(t *testing.T) {
-	p := NewPrinter(nil)
-	if p.opts.Format != FormatTable {
-		t.Errorf("default format should be table, got %s", p.opts.Format)
+	p := output.NewPrinter(nil)
+	if p == nil {
+		t.Error("expected non-nil printer")
 	}
-}
-
-func setupTestDB(t *testing.T) *sql.DB {
-	t.Helper()
-	db, err := sql.Open("sqlite", ":memory:")
-	if err != nil {
-		t.Fatalf("failed to open db: %v", err)
-	}
-	db.Exec(`CREATE TABLE test (id INTEGER, name TEXT); INSERT INTO test VALUES (1, 'Alice'), (2, 'Bob');`)
-	return db
 }

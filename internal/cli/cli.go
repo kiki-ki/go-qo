@@ -1,4 +1,3 @@
-// Package cli provides CLI mode execution for qo.
 package cli
 
 import (

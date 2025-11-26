@@ -1,4 +1,3 @@
-// Package db provides SQLite database operations for querying parsed data.
 package db
 
 import (

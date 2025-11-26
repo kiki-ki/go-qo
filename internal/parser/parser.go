@@ -1,4 +1,3 @@
-// Package parser provides functionality to parse file formats into a common representation.
 package parser
 
 import (
@@ -26,13 +25,10 @@ func (dt DataType) String() string {
 		return "INTEGER"
 	case TypeReal:
 		return "REAL"
-	case TypeBoolean, TypeJSON, TypeNull, TypeText:
-		fallthrough
+	case TypeBoolean:
+		return "INTEGER" // SQLite stores booleans as integers
 	default:
-		if dt == TypeBoolean {
-			return "INTEGER"
-		}
-		return "TEXT"
+		return "TEXT" // TypeText, TypeJSON, TypeNull all map to TEXT
 	}
 }
 
