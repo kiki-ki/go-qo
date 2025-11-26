@@ -14,7 +14,7 @@ import (
 	"github.com/kiki-ki/go-qo/internal/tui"
 )
 
-const stdinTableName = "t"
+const stdinTableName = "tmp"
 
 var (
 	outputFormat string
