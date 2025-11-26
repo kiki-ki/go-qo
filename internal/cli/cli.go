@@ -32,7 +32,7 @@ func Run(db *sql.DB, query string, opts *Options) error {
 	if err != nil {
 		return err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	p := output.NewPrinter(&output.Options{
 		Format: opts.Format,

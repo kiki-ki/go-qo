@@ -54,7 +54,7 @@ type runConfig struct {
 
 func runQuery(cmd *cobra.Command, args []string) error {
 	if err := run(cmd, args); err != nil {
-		return fmt.Errorf("%w\n", err)
+		return fmt.Errorf("%w", err)
 	}
 	return nil
 }
@@ -68,7 +68,7 @@ func run(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("failed to initialize database: %w", err)
 	}
-	defer database.Close()
+	defer func() { _ = database.Close() }()
 
 	loader := input.NewLoader(database, input.Format(inputFormat))
 

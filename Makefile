@@ -18,6 +18,13 @@ test-coverage: ## Run tests with coverage
 fmt: ## Format code
 	go fmt ./...
 
+.PHONY: lint
+lint: ## Run linter
+	golangci-lint run
+
+.PHONY: check
+check: fmt lint ## Format and lint code
+
 .PHONY: clean
 clean: ## Remove build artifacts
 	rm -f $(BINARY_NAME) coverage.out coverage.html

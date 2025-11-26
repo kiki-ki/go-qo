@@ -14,7 +14,7 @@ func TestNewLoader(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create db: %v", err)
 	}
-	defer database.Close()
+	testutil.CloseDB(t, database)
 
 	loader := input.NewLoader(database, input.FormatJSON)
 	if loader == nil {
@@ -97,7 +97,7 @@ func TestLoader_LoadFiles(t *testing.T) {
 			if err != nil {
 				t.Fatalf("failed to create db: %v", err)
 			}
-			defer database.Close()
+			testutil.CloseDB(t, database)
 
 			loader := input.NewLoader(database, tt.format)
 			err = loader.LoadFiles([]string{tt.filePath})
@@ -142,7 +142,7 @@ func TestLoader_LoadReader(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create db: %v", err)
 	}
-	defer database.Close()
+	testutil.CloseDB(t, database)
 
 	jsonData := `[{"id": 1, "name": "Alice"}, {"id": 2, "name": "Bob"}]`
 	reader := strings.NewReader(jsonData)
@@ -190,7 +190,7 @@ func TestLoader_LoadReader_InvalidJSON(t *testing.T) {
 			if err != nil {
 				t.Fatalf("failed to create db: %v", err)
 			}
-			defer database.Close()
+			testutil.CloseDB(t, database)
 
 			reader := strings.NewReader(tt.jsonData)
 			loader := input.NewLoader(database, input.FormatJSON)
@@ -211,7 +211,7 @@ func TestLoader_LoadFiles_MultipleFiles(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create db: %v", err)
 	}
-	defer database.Close()
+	testutil.CloseDB(t, database)
 
 	paths := []string{
 		testutil.JSONTestdataPath("multiple.json"),

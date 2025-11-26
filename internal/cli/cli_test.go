@@ -13,7 +13,6 @@ import (
 
 func TestRun(t *testing.T) {
 	db := testutil.SetupTestDB(t)
-	defer db.Close()
 
 	tests := []struct {
 		name   string
@@ -77,7 +76,6 @@ func TestRun(t *testing.T) {
 
 func TestRun_DefaultOptions(t *testing.T) {
 	db := testutil.SetupTestDB(t)
-	defer db.Close()
 
 	// Run with nil options should not panic
 	err := cli.Run(db, "SELECT * FROM test", nil)
@@ -88,7 +86,6 @@ func TestRun_DefaultOptions(t *testing.T) {
 
 func TestRun_InvalidQuery(t *testing.T) {
 	db := testutil.SetupTestDB(t)
-	defer db.Close()
 
 	var buf bytes.Buffer
 	err := cli.Run(db, "INVALID SQL", &cli.Options{Output: &buf})

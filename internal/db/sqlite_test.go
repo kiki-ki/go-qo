@@ -5,6 +5,7 @@ import (
 
 	"github.com/kiki-ki/go-qo/internal/db"
 	"github.com/kiki-ki/go-qo/internal/parser"
+	"github.com/kiki-ki/go-qo/testutil"
 )
 
 func TestNew(t *testing.T) {
@@ -12,7 +13,7 @@ func TestNew(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	defer database.Close()
+	testutil.CloseDB(t, database)
 
 	var result int
 	if err := database.QueryRow("SELECT 1").Scan(&result); err != nil {
@@ -28,7 +29,7 @@ func TestDB_LoadData(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create db: %v", err)
 	}
-	defer database.Close()
+	testutil.CloseDB(t, database)
 
 	tests := []struct {
 		name    string

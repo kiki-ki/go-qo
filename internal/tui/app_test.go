@@ -5,13 +5,13 @@ import (
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
+
 	"github.com/kiki-ki/go-qo/internal/tui"
 	"github.com/kiki-ki/go-qo/testutil"
 )
 
 func TestNewModel(t *testing.T) {
 	db := testutil.SetupTestDB(t)
-	defer db.Close()
 
 	m := tui.NewModel(db, []string{"test_table"})
 
@@ -24,7 +24,6 @@ func TestNewModel(t *testing.T) {
 
 func TestModel_View(t *testing.T) {
 	db := testutil.SetupTestDB(t)
-	defer db.Close()
 
 	m := tui.NewModel(db, []string{"test_table"})
 	view := m.View()
@@ -40,7 +39,6 @@ func TestModel_View(t *testing.T) {
 
 func TestModel_Update_Quit(t *testing.T) {
 	db := testutil.SetupTestDB(t)
-	defer db.Close()
 
 	m := tui.NewModel(db, []string{"test_table"})
 
@@ -66,7 +64,6 @@ func TestModel_Update_Quit(t *testing.T) {
 
 func TestModel_Update_TabTogglesFocus(t *testing.T) {
 	db := testutil.SetupTestDB(t)
-	defer db.Close()
 
 	m := tui.NewModel(db, []string{"test_table"})
 
@@ -82,7 +79,6 @@ func TestModel_Update_TabTogglesFocus(t *testing.T) {
 
 func TestModel_Init(t *testing.T) {
 	db := testutil.SetupTestDB(t)
-	defer db.Close()
 
 	m := tui.NewModel(db, []string{"test_table"})
 	cmd := m.Init()
@@ -95,7 +91,6 @@ func TestModel_Init(t *testing.T) {
 
 func TestModel_View_TableMode(t *testing.T) {
 	db := testutil.SetupTestDB(t)
-	defer db.Close()
 
 	m := tui.NewModel(db, []string{"test"})
 
@@ -110,7 +105,6 @@ func TestModel_View_TableMode(t *testing.T) {
 
 func TestModel_View_ErrorDisplay(t *testing.T) {
 	db := testutil.SetupTestDB(t)
-	defer db.Close()
 
 	m := tui.NewModel(db, []string{"test"})
 
@@ -125,7 +119,6 @@ func TestModel_View_ErrorDisplay(t *testing.T) {
 
 func TestModel_Update_EnterReturnsResult(t *testing.T) {
 	db := testutil.SetupTestDB(t)
-	defer db.Close()
 
 	m := tui.NewModel(db, []string{"test"})
 
@@ -148,7 +141,6 @@ func TestModel_Update_EnterReturnsResult(t *testing.T) {
 
 func TestModel_View_TableList(t *testing.T) {
 	db := testutil.SetupTestDB(t)
-	defer db.Close()
 
 	m := tui.NewModel(db, []string{"users", "orders"})
 	view := m.View()
@@ -167,7 +159,6 @@ func TestModel_View_TableList(t *testing.T) {
 
 func TestModel_View_CellDetail(t *testing.T) {
 	db := testutil.SetupTestDB(t)
-	defer db.Close()
 
 	m := tui.NewModel(db, []string{"test"})
 

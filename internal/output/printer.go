@@ -135,7 +135,7 @@ func (p *Printer) printTable(columns []string, data [][]any) error {
 		return lipgloss.NewStyle().Padding(0, 1)
 	})
 
-	fmt.Fprintln(p.opts.Output, t.Render())
+	_, _ = fmt.Fprintln(p.opts.Output, t.Render())
 
 	return nil
 }

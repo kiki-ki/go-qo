@@ -7,9 +7,10 @@ import (
 	"strings"
 	"testing"
 
+	_ "modernc.org/sqlite"
+
 	"github.com/kiki-ki/go-qo/internal/output"
 	"github.com/kiki-ki/go-qo/testutil"
-	_ "modernc.org/sqlite"
 )
 
 func TestPrinter_PrintRows(t *testing.T) {
@@ -55,13 +56,12 @@ func TestPrinter_PrintRows(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			db := testutil.SetupTestDB(t)
-			defer db.Close()
 
 			rows, err := db.Query("SELECT * FROM test ORDER BY id")
 			if err != nil {
 				t.Fatalf("query failed: %v", err)
 			}
-			defer rows.Close()
+			testutil.CloseRows(t, rows)
 
 			var buf bytes.Buffer
 			p := output.NewPrinter(&output.Options{Format: tt.format, Output: &buf})
@@ -76,16 +76,28 @@ func TestPrinter_PrintRows(t *testing.T) {
 }
 
 func TestPrinter_PrintRows_NullValues(t *testing.T) {
-	db, _ := sql.Open("sqlite", ":memory:")
-	defer db.Close()
-	db.Exec(`CREATE TABLE test (id INTEGER, value TEXT); INSERT INTO test VALUES (1, NULL);`)
+	db, err := sql.Open("sqlite", ":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	testutil.CloseDB(t, db)
 
-	rows, _ := db.Query("SELECT * FROM test")
-	defer rows.Close()
+	_, err = db.Exec(`CREATE TABLE test (id INTEGER, value TEXT); INSERT INTO test VALUES (1, NULL);`)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rows, err := db.Query("SELECT * FROM test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	testutil.CloseRows(t, rows)
 
 	var buf bytes.Buffer
 	p := output.NewPrinter(&output.Options{Format: output.FormatTable, Output: &buf})
-	p.PrintRows(rows)
+	if err := p.PrintRows(rows); err != nil {
+		t.Fatal(err)
+	}
 
 	if !strings.Contains(buf.String(), "NULL") {
 		t.Error("NULL values should be displayed as 'NULL'")
@@ -93,19 +105,33 @@ func TestPrinter_PrintRows_NullValues(t *testing.T) {
 }
 
 func TestPrinter_PrintRows_EmptyResult(t *testing.T) {
-	db, _ := sql.Open("sqlite", ":memory:")
-	defer db.Close()
-	db.Exec("CREATE TABLE test (id INTEGER)")
+	db, err := sql.Open("sqlite", ":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	testutil.CloseDB(t, db)
 
-	rows, _ := db.Query("SELECT * FROM test")
-	defer rows.Close()
+	_, err = db.Exec("CREATE TABLE test (id INTEGER)")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rows, err := db.Query("SELECT * FROM test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	testutil.CloseRows(t, rows)
 
 	var buf bytes.Buffer
 	p := output.NewPrinter(&output.Options{Format: output.FormatJSON, Output: &buf})
-	p.PrintRows(rows)
+	if err := p.PrintRows(rows); err != nil {
+		t.Fatal(err)
+	}
 
 	var result []map[string]any
-	json.Unmarshal(buf.Bytes(), &result)
+	if err := json.Unmarshal(buf.Bytes(), &result); err != nil {
+		t.Fatal(err)
+	}
 	if len(result) != 0 {
 		t.Errorf("expected empty array, got %d items", len(result))
 	}

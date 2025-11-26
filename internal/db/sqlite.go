@@ -6,8 +6,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/kiki-ki/go-qo/internal/parser"
 	_ "modernc.org/sqlite"
+
+	"github.com/kiki-ki/go-qo/internal/parser"
 )
 
 // DB wraps sql.DB with additional functionality.
@@ -65,14 +66,14 @@ func (db *DB) insertRows(tableName string, columns []parser.Column, rows [][]any
 
 	stmt, err := tx.Prepare(insertSQL)
 	if err != nil {
-		tx.Rollback()
+		_ = tx.Rollback()
 		return fmt.Errorf("failed to prepare insert statement: %w", err)
 	}
-	defer stmt.Close()
+	defer func() { _ = stmt.Close() }()
 
 	for i, row := range rows {
 		if _, err := stmt.Exec(row...); err != nil {
-			tx.Rollback()
+			_ = tx.Rollback()
 			return fmt.Errorf("failed to insert row %d: %w", i, err)
 		}
 	}

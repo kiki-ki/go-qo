@@ -9,13 +9,12 @@ import (
 
 func TestSQLRowsToTable(t *testing.T) {
 	db := testutil.SetupTestDB(t)
-	defer db.Close()
 
 	rows, err := db.Query("SELECT * FROM test ORDER BY id")
 	if err != nil {
 		t.Fatalf("query failed: %v", err)
 	}
-	defer rows.Close()
+	testutil.CloseRows(t, rows)
 
 	cols, tableRows, err := tui.SQLRowsToTable(rows)
 	if err != nil {
@@ -47,13 +46,12 @@ func TestSQLRowsToTable(t *testing.T) {
 
 func TestSQLRowsToTable_EmptyResult(t *testing.T) {
 	db := testutil.SetupTestDB(t)
-	defer db.Close()
 
 	rows, err := db.Query("SELECT * FROM test WHERE id = 999")
 	if err != nil {
 		t.Fatalf("query failed: %v", err)
 	}
-	defer rows.Close()
+	testutil.CloseRows(t, rows)
 
 	cols, tableRows, err := tui.SQLRowsToTable(rows)
 	if err != nil {

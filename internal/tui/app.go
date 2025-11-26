@@ -228,7 +228,7 @@ func (m *Model) executeQuery() {
 		m.err = err
 		return
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	cols, tableRows, err := SQLRowsToTable(rows)
 	if err != nil {
