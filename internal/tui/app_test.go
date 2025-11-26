@@ -145,3 +145,41 @@ func TestModel_Update_EnterReturnsResult(t *testing.T) {
 		t.Errorf("expected query to contain SELECT, got %q", result.Query)
 	}
 }
+
+func TestModel_View_TableList(t *testing.T) {
+	db := testutil.SetupTestDB(t)
+	defer db.Close()
+
+	m := tui.NewModel(db, []string{"users", "orders"})
+	view := m.View()
+
+	// Check table list is displayed in query mode
+	if !strings.Contains(view, "Tables:") {
+		t.Error("expected 'Tables:' in view")
+	}
+	if !strings.Contains(view, "users") {
+		t.Error("expected 'users' in table list")
+	}
+	if !strings.Contains(view, "orders") {
+		t.Error("expected 'orders' in table list")
+	}
+}
+
+func TestModel_View_CellDetail(t *testing.T) {
+	db := testutil.SetupTestDB(t)
+	defer db.Close()
+
+	m := tui.NewModel(db, []string{"test"})
+
+	// First update to trigger query execution (real-time query in query mode)
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("")})
+
+	// Switch to table mode
+	updated, _ = updated.Update(tea.KeyMsg{Type: tea.KeyTab})
+	view := updated.View()
+
+	// Cell detail should show position info or "no data"
+	if !strings.Contains(view, "(") {
+		t.Error("expected position info or status in cell detail")
+	}
+}

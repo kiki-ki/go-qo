@@ -36,18 +36,20 @@ type Result struct {
 
 // Model represents the TUI application state.
 type Model struct {
-	db              *sql.DB
-	mode            Mode
-	table           table.Model
-	textInput       textinput.Model
-	viewport        viewport.Model
-	err             error
-	width           int
-	height          int
-	colScrollOffset int // column scroll offset (number of columns to skip)
-	allColumns      []table.Column
-	allRows         []table.Row
-	result          *Result // set when exiting with a query to execute
+	db         *sql.DB
+	mode       Mode
+	table      table.Model
+	textInput  textinput.Model
+	viewport   viewport.Model
+	err        error
+	width      int
+	height     int
+	colCursor  int // selected column index
+	colOffset  int // column scroll offset for display
+	allColumns []table.Column
+	allRows    []table.Row
+	result     *Result // set when exiting with a query to execute
+	tableNames []string
 }
 
 // Result returns the final query result.
@@ -94,12 +96,14 @@ func NewModel(db *sql.DB, tableNames []string) Model {
 	vp := viewport.New(80, 10)
 
 	return Model{
-		db:              db,
-		mode:            ModeQuery,
-		table:           t,
-		textInput:       ti,
-		viewport:        vp,
-		colScrollOffset: 0,
+		db:         db,
+		mode:       ModeQuery,
+		table:      t,
+		textInput:  ti,
+		viewport:   vp,
+		colCursor:  0,
+		colOffset:  0,
+		tableNames: tableNames,
 	}
 }
 
@@ -183,19 +187,42 @@ func (m *Model) toggleMode() tea.Cmd {
 	return textinput.Blink
 }
 
-// handleTableScroll handles horizontal scrolling in table mode.
+// handleTableScroll handles column cursor movement in table mode.
 func (m *Model) handleTableScroll(msg tea.KeyMsg) {
-	scrollLeft := msg.Type == tea.KeyLeft || msg.String() == "h"
-	scrollRight := msg.Type == tea.KeyRight || msg.String() == "l"
+	moveLeft := msg.Type == tea.KeyLeft || msg.String() == "h"
+	moveRight := msg.Type == tea.KeyRight || msg.String() == "l"
 
-	if scrollLeft && m.colScrollOffset > 0 {
-		m.colScrollOffset--
-		m.updateVisibleColumns()
+	if moveLeft && m.colCursor > 0 {
+		m.colCursor--
+		// Adjust scroll offset if cursor goes out of view
+		if m.colCursor < m.colOffset {
+			m.colOffset = m.colCursor
+			m.updateVisibleColumns()
+		}
 	}
-	if scrollRight && m.colScrollOffset < len(m.allColumns)-1 {
-		m.colScrollOffset++
-		m.updateVisibleColumns()
+	if moveRight && m.colCursor < len(m.allColumns)-1 {
+		m.colCursor++
+		// Adjust scroll offset if cursor goes out of view
+		// Keep at least 3 columns visible before cursor if possible
+		visibleCols := m.visibleColumnCount()
+		if m.colCursor >= m.colOffset+visibleCols {
+			m.colOffset = m.colCursor - visibleCols + 1
+			m.updateVisibleColumns()
+		}
 	}
+}
+
+// visibleColumnCount returns the number of columns that can fit in the view.
+func (m *Model) visibleColumnCount() int {
+	if m.width == 0 {
+		return 5 // default
+	}
+	// Approximate: each column is ~15 chars + border
+	count := (m.width - 4) / 17
+	if count < 1 {
+		return 1
+	}
+	return count
 }
 
 // executeQuery runs the current query and updates the table.
@@ -219,7 +246,8 @@ func (m *Model) executeQuery() {
 
 	m.allColumns = cols
 	m.allRows = tableRows
-	m.colScrollOffset = 0
+	m.colCursor = 0
+	m.colOffset = 0
 	m.updateVisibleColumns()
 	m.err = nil
 }
@@ -231,13 +259,13 @@ func (m *Model) updateVisibleColumns() {
 	}
 
 	// Get visible columns from offset
-	visibleCols := m.allColumns[m.colScrollOffset:]
+	visibleCols := m.allColumns[m.colOffset:]
 
 	// Build visible rows with matching columns
 	visibleRows := make([]table.Row, len(m.allRows))
 	for i, row := range m.allRows {
-		if m.colScrollOffset < len(row) {
-			visibleRows[i] = row[m.colScrollOffset:]
+		if m.colOffset < len(row) {
+			visibleRows[i] = row[m.colOffset:]
 		} else {
 			visibleRows[i] = table.Row{}
 		}
@@ -251,14 +279,26 @@ func (m *Model) updateVisibleColumns() {
 func (m Model) View() string {
 	var b strings.Builder
 
+	parts := []string{
+		m.renderHeader(),
+		m.textInput.View(),
+		m.renderError(),
+		"\n",
+		m.table.View(),
+	}
+
+	// Add cell detail view in table mode
+	if m.mode == ModeTable {
+		parts = append(parts, m.renderCellDetail())
+	}
+
+	// Add table list in query mode
+	if m.mode == ModeQuery {
+		parts = append(parts, m.renderTableList())
+	}
+
 	b.WriteString(baseStyle.Render(
-		lipgloss.JoinVertical(lipgloss.Left,
-			m.renderHeader(),
-			m.textInput.View(),
-			m.renderError(),
-			"\n",
-			m.table.View(),
-		),
+		lipgloss.JoinVertical(lipgloss.Left, parts...),
 	))
 	b.WriteString("\n")
 
@@ -268,22 +308,30 @@ func (m Model) View() string {
 // renderHeader builds the header line with mode and hints.
 func (m Model) renderHeader() string {
 	header := fmt.Sprintf(" [%s] %s", modeStyle.Render(string(m.mode)), m.mode.CommandsHint())
-
-	if m.mode == ModeTable {
-		header += m.renderPositionInfo()
-	}
-
 	return headerStyle.Render(header)
 }
 
-// renderPositionInfo returns the current row/col position info.
-func (m Model) renderPositionInfo() string {
-	if len(m.allRows) == 0 {
-		return " (no data)"
+// renderCellDetail returns the full content of the selected cell with position info.
+func (m Model) renderCellDetail() string {
+	if len(m.allRows) == 0 || len(m.allColumns) == 0 {
+		return headerStyle.Render("\n (no data)")
 	}
-	row := m.table.Cursor() + 1
-	col := m.colScrollOffset + 1
-	return fmt.Sprintf(" (row: %d/%d, col: %d/%d)", row, len(m.allRows), col, len(m.allColumns))
+
+	rowIdx := m.table.Cursor()
+	if rowIdx < 0 || rowIdx >= len(m.allRows) {
+		return ""
+	}
+
+	row := m.allRows[rowIdx]
+	if m.colCursor >= len(row) {
+		return ""
+	}
+
+	colName := m.allColumns[m.colCursor].Title
+	value := row[m.colCursor]
+	pos := fmt.Sprintf("(%d/%d, %d/%d)", rowIdx+1, len(m.allRows), m.colCursor+1, len(m.allColumns))
+
+	return fmt.Sprintf("\n %s %s: %s", headerStyle.Render(pos), modeStyle.Render(colName), value)
 }
 
 // renderError returns the error view if there's an error.
@@ -292,6 +340,14 @@ func (m Model) renderError() string {
 		return ""
 	}
 	return errorStyle.Render(fmt.Sprintf("\nError: %v", m.err))
+}
+
+// renderTableList returns the list of available tables.
+func (m Model) renderTableList() string {
+	if len(m.tableNames) == 0 {
+		return ""
+	}
+	return headerStyle.Render(fmt.Sprintf("\n Tables: %s", strings.Join(m.tableNames, ", ")))
 }
 
 // Run starts the TUI application and returns the final query if any.
