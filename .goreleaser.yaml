@@ -1,0 +1,30 @@
+version: 2
+
+builds:
+  - env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w -X github.com/kiki-ki/go-qo/cmd.version={{.Version}}
+    main: ./cmd/qo
+
+archives:
+  - formats: [tar.gz]
+
+changelog:
+  sort: asc
+  groups:
+    - title: "Features"
+      regexp: '^feat(\(.+\))?:'
+      order: 0
+    - title: "Bug Fixes"
+      regexp: '^fix(\(.+\))?:'
+      order: 1
+  filters:
+    exclude:
+      - '^chore(\(.+\))?:'

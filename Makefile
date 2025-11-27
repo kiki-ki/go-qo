@@ -1,4 +1,5 @@
 .DEFAULT_GOAL := help
+
 BINARY_NAME := bin/qo
 VERSION := $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
 LDFLAGS := -ldflags "-X github.com/kiki-ki/go-qo/cmd.version=$(VERSION)"
@@ -24,8 +25,12 @@ fmt: ## Format code
 lint: ## Run linter
 	golangci-lint run
 
+.PHONY: tidy
+tidy: ## Run go mod tidy
+	go mod tidy
+
 .PHONY: check
-check: fmt lint ## Format and lint code
+check: tidy fmt lint ## Tidy, format and lint code
 
 .PHONY: clean
 clean: ## Remove build artifacts
