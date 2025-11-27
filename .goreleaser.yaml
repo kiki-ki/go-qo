@@ -16,6 +16,14 @@ builds:
 archives:
   - formats: [tar.gz]
 
+homebrew_casks:
+  - repository:
+      owner: kiki-ki
+      name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+    homepage: https://github.com/kiki-ki/go-qo
+    description: "Query JSON data with SQL"
+
 changelog:
   sort: asc
   groups:
