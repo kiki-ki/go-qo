@@ -1,6 +1,6 @@
 # qo
 
-A command-line tool to query JSON data using SQL with an interactive editor.
+A command-line tool to query JSON data using SQL.
 
 ## Installation
 
@@ -11,12 +11,13 @@ go install github.com/kiki-ki/go-qo/cmd/qo@latest
 ## Usage
 
 ```bash
-# TUI usage
-qo -i json data.json                              # Open TUI editor with file data
-cat data.json | qo -i json                        # Open TUI editor with stdin data
-# CLI usage
-qo -i json -q "SELECT * FROM data" data.json      # Direct query to file data
-cat data.json | qo -i json -q "SELECT * FROM tmp" # Direct query to stdin data
+# Interactive mode (default)
+qo data.json                              # Open interactive editor
+cat data.json | qo                        # Pipe data to interactive editor
+
+# CLI mode
+qo -q "SELECT * FROM data" data.json      # Direct query execution
+cat data.json | qo -q "SELECT * FROM tmp" # Query piped data
 ```
 
 ### Options
@@ -25,9 +26,9 @@ cat data.json | qo -i json -q "SELECT * FROM tmp" # Direct query to stdin data
 |------|-------|-------------|
 | `--input` | `-i` | Input format: `json` (default) |
 | `--output` | `-o` | Output format: `table` (default), `json`, `csv` |
-| `--query` | `-q` | SQL query (enables CLI mode) |
+| `--query` | `-q` | SQL query (skips interactive mode) |
 
-## TUI editor (default)
+## Interactive mode
 
 | Key | Mode | Action |
 | - | - | - |

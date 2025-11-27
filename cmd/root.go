@@ -4,6 +4,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -28,17 +29,13 @@ var rootCmd = &cobra.Command{
 	Version: version,
 	Use:     "qo [files...]",
 	Short:   "Execute SQL queries on JSON files",
-	Long: `
-qo is a command-line tool that allows you to query JSON files using SQL.
-
-TUI Mode (default):
-	qo data.json
-	cat data.json | qo
-
-CLI Mode (with -q flag):
-	qo -q "SELECT * FROM data" data.json
-	cat data.json | qo -q "SELECT * FROM t"
-	`,
+	Long:    "qo is a command-line tool that allows you to query JSON files using SQL.",
+	Example: strings.Join([]string{
+		"  qo data.json                              # Interactive mode",
+		"  cat data.json | qo                        # Pipe to interactive mode",
+		`  qo -q "SELECT * FROM data" data.json      # CLI mode"`,
+		`  cat data.json | qo -q "SELECT * FROM tmp" # Pipe to CLI mode`,
+	}, "\n"),
 	Args: cobra.ArbitraryArgs,
 	RunE: runQuery,
 }
@@ -46,7 +43,7 @@ CLI Mode (with -q flag):
 func init() {
 	rootCmd.Flags().StringVarP(&outputFormat, "output", "o", "table", "Output format: table (default) | json | csv")
 	rootCmd.Flags().StringVarP(&inputFormat, "input", "i", "json", "Input format: json (default)")
-	rootCmd.Flags().StringVarP(&queryFlag, "query", "q", "", "SQL query to execute (if omitted, TUI mode)")
+	rootCmd.Flags().StringVarP(&queryFlag, "query", "q", "", "SQL query to execute (if omitted, interactive mode)")
 }
 
 // runConfig holds the parsed configuration for a query run.
