@@ -14,7 +14,7 @@ import (
 	"github.com/kiki-ki/go-qo/internal/tui"
 )
 
-const stdinTableName = "tmp"
+var version = "dev"
 
 var (
 	outputFormat string
@@ -22,10 +22,14 @@ var (
 	queryFlag    string
 )
 
+const stdinTableName = "tmp"
+
 var rootCmd = &cobra.Command{
-	Use:   "qo [files...]",
-	Short: "Execute SQL queries on JSON files",
-	Long: `qo is a command-line tool that allows you to query JSON files using SQL.
+	Version: version,
+	Use:     "qo [files...]",
+	Short:   "Execute SQL queries on JSON files",
+	Long: `
+qo is a command-line tool that allows you to query JSON files using SQL.
 
 TUI Mode (default):
 	qo data.json
@@ -33,8 +37,8 @@ TUI Mode (default):
 
 CLI Mode (with -q flag):
 	qo -q "SELECT * FROM data" data.json
-	cat data.json | qo -q "SELECT * FROM t"`,
-
+	cat data.json | qo -q "SELECT * FROM t"
+	`,
 	Args: cobra.ArbitraryArgs,
 	RunE: runQuery,
 }

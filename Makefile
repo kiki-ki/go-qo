@@ -1,9 +1,11 @@
 .DEFAULT_GOAL := help
 BINARY_NAME := bin/qo
+VERSION := $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
+LDFLAGS := -ldflags "-X github.com/kiki-ki/go-qo/cmd.version=$(VERSION)"
 
 .PHONY: build
 build: ## Build the binary
-	go build -o $(BINARY_NAME) ./cmd/qo
+	go build $(LDFLAGS) -o $(BINARY_NAME) ./cmd/qo
 
 .PHONY: test
 test: ## Run all tests
