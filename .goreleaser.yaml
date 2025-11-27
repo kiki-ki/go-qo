@@ -1,7 +1,8 @@
 version: 2
 
 builds:
-  - env:
+  - binary: qo
+    env:
       - CGO_ENABLED=0
     goos:
       - linux
@@ -23,6 +24,7 @@ brews:
       owner: kiki-ki
       name: homebrew-tap
       token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+    directory: Formula
     homepage: https://github.com/kiki-ki/go-qo
     description: "Query JSON data with SQL"
     install: |
