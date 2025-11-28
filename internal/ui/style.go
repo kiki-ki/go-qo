@@ -2,21 +2,21 @@ package ui
 
 import "github.com/charmbracelet/lipgloss"
 
-// Color palette using ANSI 256 colors.
+// Color palette with adaptive colors for light/dark terminal themes.
 // Reference: https://www.ditig.com/256-colors-cheat-sheet
 var (
-	colorNormal      = lipgloss.Color("15") // white - normal text
-	colorPlaceholder = lipgloss.Color("8")  // gray - secondary text
-	colorError       = lipgloss.Color("9")  // red - error messages
-	colorAccent      = lipgloss.Color("6")  // cyan - highlights
+	colorBase   = lipgloss.AdaptiveColor{Light: "0", Dark: "7"} // black/silver
+	colorMuted  = lipgloss.AdaptiveColor{Light: "8", Dark: "8"} // gray
+	colorError  = lipgloss.Color("9")                           // red
+	colorAccent = lipgloss.Color("13")                          // pink
 )
 
-// Component styles.
+// Styles
 var (
-	baseStyle   = lipgloss.NewStyle().BorderStyle(lipgloss.NormalBorder()).BorderForeground(colorNormal).Padding(0, 1)
-	headerStyle = lipgloss.NewStyle().Foreground(colorPlaceholder).Bold(true)
-	modeStyle   = lipgloss.NewStyle().Foreground(colorAccent).Bold(true)
-	errorStyle  = lipgloss.NewStyle().Foreground(colorError)
+	styleTextBase   = lipgloss.NewStyle().Foreground(colorBase)
+	styleTextMuted  = lipgloss.NewStyle().Foreground(colorMuted)
+	styleTextAccent = lipgloss.NewStyle().Foreground(colorAccent)
+	styleTextError  = lipgloss.NewStyle().Foreground(colorError)
 )
 
 // Table column dimensions.

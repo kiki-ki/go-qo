@@ -42,7 +42,8 @@ var (
 		{key: "Enter", message: "execute query"},
 	})
 	tableModeCommands = slices.Concat(baseModeCommands, []modeCommand{
-		{key: "Arrows", message: "scroll"},
+		{key: "jk", message: "rows"},
+		{key: "hl", message: "columns"},
 	})
 )
 

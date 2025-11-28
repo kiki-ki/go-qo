@@ -59,10 +59,10 @@ func newTextInput(tableNames []string) textinput.Model {
 	ti.CharLimit = inputCharLimit
 	ti.Width = inputInitialWidth
 
-	ti.TextStyle = lipgloss.NewStyle().Foreground(colorNormal)
-	ti.PlaceholderStyle = lipgloss.NewStyle().Foreground(colorPlaceholder)
-	ti.PromptStyle = lipgloss.NewStyle().Foreground(colorAccent)
-	ti.Cursor.Style = lipgloss.NewStyle().Foreground(colorAccent)
+	ti.TextStyle = styleTextBase
+	ti.PlaceholderStyle = styleTextMuted
+	ti.PromptStyle = styleTextAccent
+	ti.Cursor.Style = styleTextAccent
 
 	if len(tableNames) > 0 {
 		ti.SetValue(fmt.Sprintf("SELECT * FROM %s LIMIT %d", tableNames[0], defaultQueryLimit))
@@ -83,12 +83,12 @@ func newTable() table.Model {
 	s := table.DefaultStyles()
 	s.Header = s.Header.
 		BorderStyle(lipgloss.NormalBorder()).
-		BorderForeground(colorNormal).
+		BorderForeground(colorBase).
 		BorderBottom(true).
 		Bold(false)
 	s.Selected = s.Selected.
 		Foreground(colorAccent).
-		Bold(true)
+		Bold(false)
 	t.SetStyles(s)
 
 	return t
