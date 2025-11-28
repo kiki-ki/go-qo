@@ -56,8 +56,8 @@ func newTextInput(tableNames []string) textinput.Model {
 	ti := textinput.New()
 	ti.Placeholder = "SQL Query..."
 	ti.Focus()
-	ti.CharLimit = 1000
-	ti.Width = 100
+	ti.CharLimit = inputCharLimit
+	ti.Width = inputInitialWidth
 
 	ti.TextStyle = lipgloss.NewStyle().Foreground(colorNormal)
 	ti.PlaceholderStyle = lipgloss.NewStyle().Foreground(colorPlaceholder)
@@ -65,7 +65,7 @@ func newTextInput(tableNames []string) textinput.Model {
 	ti.Cursor.Style = lipgloss.NewStyle().Foreground(colorAccent)
 
 	if len(tableNames) > 0 {
-		ti.SetValue(fmt.Sprintf("SELECT * FROM %s LIMIT 10", tableNames[0]))
+		ti.SetValue(fmt.Sprintf("SELECT * FROM %s LIMIT %d", tableNames[0], defaultQueryLimit))
 	}
 
 	return ti
@@ -74,10 +74,10 @@ func newTextInput(tableNames []string) textinput.Model {
 // newTable creates a configured table component.
 func newTable() table.Model {
 	t := table.New(
-		table.WithColumns([]table.Column{{Title: "Results", Width: 20}}),
+		table.WithColumns([]table.Column{{Title: "Results", Width: initialColumnWidth}}),
 		table.WithRows([]table.Row{}),
 		table.WithFocused(false),
-		table.WithHeight(10),
+		table.WithHeight(initialTableHeight),
 	)
 
 	s := table.DefaultStyles()

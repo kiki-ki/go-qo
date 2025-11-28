@@ -39,3 +39,16 @@ const (
 	tableHeightOffset = 10 // subtract from terminal height for table
 	inputWidthOffset  = 10 // subtract from terminal width for input
 )
+
+// Input component settings.
+const (
+	inputCharLimit    = 1000 // max characters in query input
+	inputInitialWidth = 100  // initial width before window resize
+)
+
+// Initial table settings (before data is loaded).
+const (
+	initialTableHeight = 10
+	initialColumnWidth = 20
+	defaultQueryLimit  = 10 // LIMIT value for default query
+)
