@@ -1,4 +1,4 @@
-package tui
+package ui
 
 import (
 	"fmt"
@@ -7,7 +7,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-// View renders the TUI display.
+// View renders the UI display.
 func (m Model) View() string {
 	var b strings.Builder
 

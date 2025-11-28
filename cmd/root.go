@@ -12,7 +12,7 @@ import (
 	"github.com/kiki-ki/go-qo/internal/db"
 	"github.com/kiki-ki/go-qo/internal/input"
 	"github.com/kiki-ki/go-qo/internal/output"
-	"github.com/kiki-ki/go-qo/internal/tui"
+	"github.com/kiki-ki/go-qo/internal/ui"
 )
 
 var version = "dev"
@@ -130,11 +130,11 @@ func loadData(loader *input.Loader, cfg *runConfig, hasStdinData bool) error {
 	return nil
 }
 
-// execute runs either TUI or CLI mode based on configuration.
-// TUI mode is used when query is empty, CLI mode when query is provided via -q flag.
+// execute runs either UI or CLI mode based on configuration.
+// UI mode is used when query is empty, CLI mode when query is provided via -q flag.
 func execute(database *db.DB, cfg *runConfig) error {
 	if cfg.query == "" {
-		result, err := tui.Run(database.DB, cfg.tableNames)
+		result, err := ui.Run(database.DB, cfg.tableNames)
 		if err != nil {
 			return err
 		}

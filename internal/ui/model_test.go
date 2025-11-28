@@ -1,4 +1,4 @@
-package tui_test
+package ui_test
 
 import (
 	"strings"
@@ -6,14 +6,14 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/kiki-ki/go-qo/internal/tui"
+	"github.com/kiki-ki/go-qo/internal/ui"
 	"github.com/kiki-ki/go-qo/testutil"
 )
 
 func TestNewModel(t *testing.T) {
 	db := testutil.SetupTestDB(t)
 
-	m := tui.NewModel(db, []string{"test_table"})
+	m := ui.NewModel(db, []string{"test_table"})
 
 	// Verify initial state via View output
 	view := m.View()
@@ -25,7 +25,7 @@ func TestNewModel(t *testing.T) {
 func TestModel_View(t *testing.T) {
 	db := testutil.SetupTestDB(t)
 
-	m := tui.NewModel(db, []string{"test_table"})
+	m := ui.NewModel(db, []string{"test_table"})
 	view := m.View()
 
 	// Check view contains expected elements
@@ -40,7 +40,7 @@ func TestModel_View(t *testing.T) {
 func TestModel_Update_Quit(t *testing.T) {
 	db := testutil.SetupTestDB(t)
 
-	m := tui.NewModel(db, []string{"test_table"})
+	m := ui.NewModel(db, []string{"test_table"})
 
 	// Test Ctrl+C quits
 	newModel, cmd := m.Update(tea.KeyMsg{Type: tea.KeyCtrlC})
@@ -52,7 +52,7 @@ func TestModel_Update_Quit(t *testing.T) {
 	}
 
 	// Test Esc quits
-	m = tui.NewModel(db, []string{"test_table"})
+	m = ui.NewModel(db, []string{"test_table"})
 	newModel, cmd = m.Update(tea.KeyMsg{Type: tea.KeyEsc})
 	if newModel == nil {
 		t.Error("expected non-nil model")
@@ -65,7 +65,7 @@ func TestModel_Update_Quit(t *testing.T) {
 func TestModel_Update_TabTogglesFocus(t *testing.T) {
 	db := testutil.SetupTestDB(t)
 
-	m := tui.NewModel(db, []string{"test_table"})
+	m := ui.NewModel(db, []string{"test_table"})
 
 	// Press Tab to toggle focus
 	newModel, _ := m.Update(tea.KeyMsg{Type: tea.KeyTab})
@@ -80,7 +80,7 @@ func TestModel_Update_TabTogglesFocus(t *testing.T) {
 func TestModel_Init(t *testing.T) {
 	db := testutil.SetupTestDB(t)
 
-	m := tui.NewModel(db, []string{"test_table"})
+	m := ui.NewModel(db, []string{"test_table"})
 	cmd := m.Init()
 
 	// Init should return a blink command for textinput
@@ -92,7 +92,7 @@ func TestModel_Init(t *testing.T) {
 func TestModel_View_TableMode(t *testing.T) {
 	db := testutil.SetupTestDB(t)
 
-	m := tui.NewModel(db, []string{"test"})
+	m := ui.NewModel(db, []string{"test"})
 
 	// Switch to table mode
 	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyTab})
@@ -106,7 +106,7 @@ func TestModel_View_TableMode(t *testing.T) {
 func TestModel_View_ErrorDisplay(t *testing.T) {
 	db := testutil.SetupTestDB(t)
 
-	m := tui.NewModel(db, []string{"test"})
+	m := ui.NewModel(db, []string{"test"})
 
 	// Enter invalid SQL to trigger error
 	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("INVALID SQL")})
@@ -120,7 +120,7 @@ func TestModel_View_ErrorDisplay(t *testing.T) {
 func TestModel_Update_EnterReturnsResult(t *testing.T) {
 	db := testutil.SetupTestDB(t)
 
-	m := tui.NewModel(db, []string{"test"})
+	m := ui.NewModel(db, []string{"test"})
 
 	// Press Enter in query mode should quit with result
 	updated, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
@@ -129,7 +129,7 @@ func TestModel_Update_EnterReturnsResult(t *testing.T) {
 	}
 
 	// Verify result contains query
-	model := updated.(tui.Model)
+	model := updated.(ui.Model)
 	result := model.Result()
 	if result == nil {
 		t.Fatal("expected non-nil result")
@@ -142,7 +142,7 @@ func TestModel_Update_EnterReturnsResult(t *testing.T) {
 func TestModel_View_TableList(t *testing.T) {
 	db := testutil.SetupTestDB(t)
 
-	m := tui.NewModel(db, []string{"users", "orders"})
+	m := ui.NewModel(db, []string{"users", "orders"})
 	view := m.View()
 
 	// Check table list is displayed in query mode
@@ -160,7 +160,7 @@ func TestModel_View_TableList(t *testing.T) {
 func TestModel_View_CellDetail(t *testing.T) {
 	db := testutil.SetupTestDB(t)
 
-	m := tui.NewModel(db, []string{"test"})
+	m := ui.NewModel(db, []string{"test"})
 
 	// Trigger window resize to initialize dimensions (needed for query execution)
 	updated, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
@@ -183,7 +183,7 @@ func TestModel_View_CellDetail(t *testing.T) {
 func TestModel_TableNavigation(t *testing.T) {
 	db := testutil.SetupTestDB(t)
 
-	m := tui.NewModel(db, []string{"test"})
+	m := ui.NewModel(db, []string{"test"})
 
 	// Initialize dimensions and execute query
 	updated, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
@@ -217,7 +217,7 @@ func TestModel_TableNavigation(t *testing.T) {
 func TestModel_ToggleMode_BackToQuery(t *testing.T) {
 	db := testutil.SetupTestDB(t)
 
-	m := tui.NewModel(db, []string{"test"})
+	m := ui.NewModel(db, []string{"test"})
 
 	// Switch to table mode
 	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyTab})

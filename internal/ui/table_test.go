@@ -1,9 +1,9 @@
-package tui_test
+package ui_test
 
 import (
 	"testing"
 
-	"github.com/kiki-ki/go-qo/internal/tui"
+	"github.com/kiki-ki/go-qo/internal/ui"
 	"github.com/kiki-ki/go-qo/testutil"
 )
 
@@ -16,7 +16,7 @@ func TestSQLRowsToTable(t *testing.T) {
 	}
 	testutil.CloseRows(t, rows)
 
-	cols, tableRows, err := tui.SQLRowsToTable(rows)
+	cols, tableRows, err := ui.SQLRowsToTable(rows)
 	if err != nil {
 		t.Fatalf("SQLRowsToTable failed: %v", err)
 	}
@@ -53,7 +53,7 @@ func TestSQLRowsToTable_EmptyResult(t *testing.T) {
 	}
 	testutil.CloseRows(t, rows)
 
-	cols, tableRows, err := tui.SQLRowsToTable(rows)
+	cols, tableRows, err := ui.SQLRowsToTable(rows)
 	if err != nil {
 		t.Fatalf("SQLRowsToTable failed: %v", err)
 	}
@@ -85,7 +85,7 @@ func TestFormatValue(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := tui.FormatValue(tt.input)
+			got := ui.FormatValue(tt.input)
 			if got != tt.want {
 				t.Errorf("FormatValue(%v) = %q, want %q", tt.input, got, tt.want)
 			}

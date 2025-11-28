@@ -1,4 +1,4 @@
-package tui
+package ui
 
 import (
 	"database/sql"
@@ -10,12 +10,12 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-// Result holds the final query when exiting TUI.
+// Result holds the final query when exiting UI.
 type Result struct {
 	Query string
 }
 
-// Model represents the TUI application state.
+// Model represents the UI application state.
 type Model struct {
 	db         *sql.DB
 	mode       Mode
@@ -37,7 +37,7 @@ func (m Model) Result() *Result {
 	return m.result
 }
 
-// NewModel creates a new TUI model.
+// NewModel creates a new UI model.
 func NewModel(db *sql.DB, tableNames []string) Model {
 	ti := newTextInput(tableNames)
 	t := newTable()
@@ -137,7 +137,7 @@ func (m *Model) handleWindowResize(msg tea.WindowSizeMsg) {
 	m.updateVisibleColumns()
 }
 
-// Run starts the TUI application and returns the final query if any.
+// Run starts the UI application and returns the final query if any.
 func Run(db *sql.DB, tableNames []string) (*Result, error) {
 	p := tea.NewProgram(NewModel(db, tableNames), tea.WithAltScreen())
 
