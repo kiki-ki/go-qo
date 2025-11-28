@@ -7,6 +7,11 @@ import (
 	"github.com/charmbracelet/bubbles/table"
 )
 
+const (
+	columnWidth    = 15 // default column width
+	maxCellDisplay = 50 // max characters to display in a cell
+)
+
 // SQLRowsToTable converts SQL rows to bubbles table format.
 func SQLRowsToTable(rows *sql.Rows) ([]table.Column, []table.Row, error) {
 	cols, err := rows.Columns()
@@ -16,7 +21,7 @@ func SQLRowsToTable(rows *sql.Rows) ([]table.Column, []table.Row, error) {
 
 	tCols := make([]table.Column, len(cols))
 	for i, c := range cols {
-		tCols[i] = table.Column{Title: c, Width: 15}
+		tCols[i] = table.Column{Title: c, Width: columnWidth}
 	}
 
 	var tRows []table.Row
@@ -44,18 +49,30 @@ func SQLRowsToTable(rows *sql.Rows) ([]table.Column, []table.Row, error) {
 
 // FormatValue converts a database value to string for display.
 func FormatValue(val any) string {
+	var s string
 	if val == nil {
 		return "(NULL)"
 	}
 	switch v := val.(type) {
 	case []byte:
-		return string(v)
+		s = string(v)
 	case float64:
 		if float64(int64(v)) == v {
-			return fmt.Sprintf("%d", int64(v))
+			s = fmt.Sprintf("%d", int64(v))
+		} else {
+			s = fmt.Sprintf("%g", v)
 		}
-		return fmt.Sprintf("%g", v)
 	default:
-		return fmt.Sprintf("%v", v)
+		s = fmt.Sprintf("%v", v)
 	}
+	return truncate(s, maxCellDisplay)
+}
+
+// truncate shortens a string to maxLen, adding "…" if truncated.
+func truncate(s string, maxLen int) string {
+	runes := []rune(s)
+	if len(runes) <= maxLen {
+		return s
+	}
+	return string(runes[:maxLen-1]) + "…"
 }

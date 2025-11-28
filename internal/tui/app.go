@@ -22,7 +22,6 @@ var (
 
 // Styles
 var (
-	baseStyle   = lipgloss.NewStyle().BorderStyle(lipgloss.NormalBorder()).BorderForeground(colorFontNormal)
 	headerStyle = lipgloss.NewStyle().Foreground(colorFontPlaceholder).Bold(true)
 	modeStyle   = lipgloss.NewStyle().Foreground(colorFontAccent).Bold(true)
 	errorStyle  = lipgloss.NewStyle().Foreground(colorFontError)
@@ -141,6 +140,8 @@ func (m *Model) handleWindowResize(msg tea.WindowSizeMsg) {
 	m.width = msg.Width
 	m.height = msg.Height
 	m.table.SetHeight(msg.Height - 10)
+	m.textInput.Width = msg.Width - 10
+	m.updateVisibleColumns()
 }
 
 // handleKeyMsg processes key events and returns a command and quit flag.
@@ -249,14 +250,30 @@ func (m *Model) updateVisibleColumns() {
 		return
 	}
 
-	// Get visible columns from offset
-	visibleCols := m.allColumns[m.colOffset:]
+	visibleCount := m.visibleColumnCount()
+	endIdx := m.colOffset + visibleCount
+	if endIdx > len(m.allColumns) {
+		endIdx = len(m.allColumns)
+	}
+
+	// Calculate column width to fill available space
+	colWidth := m.calculateColumnWidth(endIdx - m.colOffset)
+
+	// Get visible columns from offset with dynamic width
+	visibleCols := make([]table.Column, endIdx-m.colOffset)
+	for i, col := range m.allColumns[m.colOffset:endIdx] {
+		visibleCols[i] = table.Column{Title: col.Title, Width: colWidth}
+	}
 
 	// Build visible rows with matching columns
 	visibleRows := make([]table.Row, len(m.allRows))
 	for i, row := range m.allRows {
 		if m.colOffset < len(row) {
-			visibleRows[i] = row[m.colOffset:]
+			end := endIdx
+			if end > len(row) {
+				end = len(row)
+			}
+			visibleRows[i] = row[m.colOffset:end]
 		} else {
 			visibleRows[i] = table.Row{}
 		}
@@ -267,6 +284,23 @@ func (m *Model) updateVisibleColumns() {
 	m.table.SetRows(visibleRows)
 }
 
+// calculateColumnWidth returns the optimal column width based on terminal width.
+func (m *Model) calculateColumnWidth(numCols int) int {
+	if m.width == 0 || numCols == 0 {
+		return 15 // default
+	}
+	// Available width minus borders and padding
+	available := m.width - 4 - (numCols * 2) // 2 chars per column for borders
+	width := available / numCols
+	if width < 10 {
+		return 10 // minimum width
+	}
+	if width > 50 {
+		return 50 // maximum width
+	}
+	return width
+}
+
 func (m Model) View() string {
 	var b strings.Builder
 
@@ -274,7 +308,7 @@ func (m Model) View() string {
 		m.renderHeader(),
 		m.textInput.View(),
 		m.renderError(),
-		"\n",
+		"",
 		m.table.View(),
 	}
 
@@ -288,9 +322,16 @@ func (m Model) View() string {
 		parts = append(parts, m.renderTableList())
 	}
 
-	b.WriteString(baseStyle.Render(
-		lipgloss.JoinVertical(lipgloss.Left, parts...),
-	))
+	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
+
+	// Apply border style with padding
+	style := lipgloss.NewStyle().
+		BorderStyle(lipgloss.NormalBorder()).
+		BorderForeground(colorFontNormal).
+		Padding(0, 1)
+
+	b.WriteString("\n") // ensure top border is visible in alt screen
+	b.WriteString(style.Render(content))
 	b.WriteString("\n")
 
 	return b.String()
@@ -325,10 +366,10 @@ func (m Model) renderCellDetail() string {
 	return fmt.Sprintf("\n %s %s: %s", headerStyle.Render(pos), modeStyle.Render(colName), value)
 }
 
-// renderError returns the error view if there's an error.
+// renderError returns the error view. Always returns a line to prevent layout shift.
 func (m Model) renderError() string {
 	if m.err == nil {
-		return ""
+		return "\n" // empty line to maintain consistent height
 	}
 	return errorStyle.Render(fmt.Sprintf("\nError: %v", m.err))
 }
