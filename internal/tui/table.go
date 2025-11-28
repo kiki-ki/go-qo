@@ -7,11 +7,6 @@ import (
 	"github.com/charmbracelet/bubbles/table"
 )
 
-const (
-	columnWidth    = 15 // default column width
-	maxCellDisplay = 50 // max characters to display in a cell
-)
-
 // SQLRowsToTable converts SQL rows to bubbles table format.
 func SQLRowsToTable(rows *sql.Rows) ([]table.Column, []table.Row, error) {
 	cols, err := rows.Columns()
@@ -21,7 +16,7 @@ func SQLRowsToTable(rows *sql.Rows) ([]table.Column, []table.Row, error) {
 
 	tCols := make([]table.Column, len(cols))
 	for i, c := range cols {
-		tCols[i] = table.Column{Title: c, Width: columnWidth}
+		tCols[i] = table.Column{Title: c, Width: defaultColumnWidth}
 	}
 
 	var tRows []table.Row

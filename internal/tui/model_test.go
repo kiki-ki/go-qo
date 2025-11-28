@@ -162,15 +162,74 @@ func TestModel_View_CellDetail(t *testing.T) {
 
 	m := tui.NewModel(db, []string{"test"})
 
-	// First update to trigger query execution (real-time query in query mode)
-	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("")})
+	// Trigger window resize to initialize dimensions (needed for query execution)
+	updated, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
 
 	// Switch to table mode
 	updated, _ = updated.Update(tea.KeyMsg{Type: tea.KeyTab})
 	view := updated.View()
 
-	// Cell detail should show position info or "no data"
-	if !strings.Contains(view, "(") {
-		t.Error("expected position info or status in cell detail")
+	// In table mode, should show TABLE header
+	if !strings.Contains(view, "TABLE") {
+		t.Error("expected TABLE mode indicator")
+	}
+
+	// Should show data (Alice and Bob from test table)
+	if !strings.Contains(view, "Alice") {
+		t.Error("expected data to be displayed")
+	}
+}
+
+func TestModel_TableNavigation(t *testing.T) {
+	db := testutil.SetupTestDB(t)
+
+	m := tui.NewModel(db, []string{"test"})
+
+	// Initialize dimensions and execute query
+	updated, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
+
+	// Switch to table mode
+	updated, _ = updated.Update(tea.KeyMsg{Type: tea.KeyTab})
+
+	// Navigate right with arrow key
+	updated, _ = updated.Update(tea.KeyMsg{Type: tea.KeyRight})
+	view := updated.View()
+	if !strings.Contains(view, "TABLE") {
+		t.Error("expected TABLE mode after right navigation")
+	}
+
+	// Navigate left with arrow key
+	updated, _ = updated.Update(tea.KeyMsg{Type: tea.KeyLeft})
+	view = updated.View()
+	if !strings.Contains(view, "TABLE") {
+		t.Error("expected TABLE mode after left navigation")
+	}
+
+	// Navigate with vim keys (h/l)
+	updated, _ = updated.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("l")})
+	updated, _ = updated.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("h")})
+	view = updated.View()
+	if !strings.Contains(view, "TABLE") {
+		t.Error("expected TABLE mode after vim navigation")
+	}
+}
+
+func TestModel_ToggleMode_BackToQuery(t *testing.T) {
+	db := testutil.SetupTestDB(t)
+
+	m := tui.NewModel(db, []string{"test"})
+
+	// Switch to table mode
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyTab})
+	view := updated.View()
+	if !strings.Contains(view, "TABLE") {
+		t.Error("expected TABLE mode")
+	}
+
+	// Switch back to query mode
+	updated, _ = updated.Update(tea.KeyMsg{Type: tea.KeyTab})
+	view = updated.View()
+	if !strings.Contains(view, "QUERY") {
+		t.Error("expected QUERY mode after second Tab")
 	}
 }
