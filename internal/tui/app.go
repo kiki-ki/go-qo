@@ -233,13 +233,16 @@ func (m *Model) executeQuery() {
 
 	cols, tableRows, err := SQLRowsToTable(rows)
 	if err != nil {
+		m.err = err
 		return
 	}
 
+	// Reset table state before updating
 	m.allColumns = cols
 	m.allRows = tableRows
 	m.colCursor = 0
 	m.colOffset = 0
+	m.table.SetCursor(0)
 	m.updateVisibleColumns()
 	m.err = nil
 }
