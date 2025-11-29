@@ -22,15 +22,20 @@ fmt: ## format code
 	go fmt ./...
 
 .PHONY: lint
-lint: ## run linter
+lint: ## run linter (go vet & golangci-lint)
+	go vet ./...
 	go tool golangci-lint run
+
+.PHONY: vuln
+vuln: ## run vulnerability check
+	go tool govulncheck ./...
 
 .PHONY: tidy
 tidy: ## run go mod tidy
 	go mod tidy
 
 .PHONY: check
-check: tidy fmt lint ## tidy, format and lint code
+check: tidy fmt lint vuln ## tidy, format, lint and security check
 
 .PHONY: clean
 clean: ## remove build artifacts
