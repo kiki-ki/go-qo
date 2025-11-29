@@ -5,36 +5,44 @@ VERSION := $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev
 LDFLAGS := -ldflags "-X github.com/kiki-ki/go-qo/cmd.version=$(VERSION)"
 
 .PHONY: build
-build: ## Build the binary
+build: ## build the binary
 	go build $(LDFLAGS) -o $(BINARY_NAME) ./cmd/qo
 
 .PHONY: test
-test: ## Run all tests
+test: ## run all tests
 	go test ./... -v
 
 .PHONY: test-coverage
-test-coverage: ## Run tests with coverage
+test-coverage: ## run tests with coverage
 	go test ./... -coverprofile=coverage.out
 	go tool cover -html=coverage.out -o coverage.html
 
 .PHONY: fmt
-fmt: ## Format code
+fmt: ## format code
 	go fmt ./...
 
 .PHONY: lint
-lint: ## Run linter
-	golangci-lint run
+lint: ## run linter
+	go tool golangci-lint run
 
 .PHONY: tidy
-tidy: ## Run go mod tidy
+tidy: ## run go mod tidy
 	go mod tidy
 
 .PHONY: check
-check: tidy fmt lint ## Tidy, format and lint code
+check: tidy fmt lint ## tidy, format and lint code
 
 .PHONY: clean
-clean: ## Remove build artifacts
+clean: ## remove build artifacts
 	rm -f $(BINARY_NAME) coverage.out coverage.html
+
+.PHONY: install-tool
+install-tool: ## install development tools
+	go install tool
+
+.PHONY: releaser-check
+releaser-check: ## run goreleaser check
+	go tool goreleaser check
 
 .PHONY: help
 help: ## list up commands
