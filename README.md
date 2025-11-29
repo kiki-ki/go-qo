@@ -6,42 +6,51 @@ qo is a command-line tool for interactively querying JSON (... and soon, other f
 
 ## Install
 
-### Homebrew Tap
+<details>
+<summary>Homebrew Tap</summary>
 
 ```bash
 brew install kiki-ki/tap/go-qo
 ```
 
-### Shell Script
+</details>
+
+<details>
+<summary>Shell Script</summary>
 
 Install the latest version to `./bin`:
 
-```bash
+```sh
 curl -sfL https://raw.githubusercontent.com/kiki-ki/go-qo/main/install.sh | sh
 ```
 
 Install to a specific directory:
 
-```bash
+```sh
 curl -sfL https://raw.githubusercontent.com/kiki-ki/go-qo/main/install.sh
  | BINDIR=./custom/bin sh
 ```
 
 Install a specific version:
 
-```bash
+```sh
 curl -sfL https://raw.githubusercontent.com/kiki-ki/go-qo/main/install.sh | VERSION=v1.0.0 sh
 ```
 
-### Go Install
+</details>
 
-```bash
+<details>
+<summary>Go Install</summary>
+
+```sh
 go install [github.com/kiki-ki/go-qo/cmd/qo@latest](https://github.com/kiki-ki/go-qo/cmd/qo@latest)
 ```
 
+</details>
+
 ## Usage
 
-```bash
+```sh
 # Interactive mode (default)
 qo data.json                              # Open interactive editor
 cat data.json | qo                        # Pipe data to interactive editor
