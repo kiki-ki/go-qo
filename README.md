@@ -39,7 +39,7 @@ curl -sfL https://raw.githubusercontent.com/kiki-ki/go-qo/main/install.sh | VERS
 <summary>Go Install</summary>
 
 ```sh
-go install [github.com/kiki-ki/go-qo/cmd/qo@latest](https://github.com/kiki-ki/go-qo/cmd/qo@latest)
+go install github.com/kiki-ki/go-qo/cmd/qo@latest
 ```
 
 </details>
