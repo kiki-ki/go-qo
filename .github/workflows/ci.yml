@@ -38,3 +38,15 @@ jobs:
         run: |
           make lint
           make vuln
+
+  status-check:
+    runs-on: ubuntu-latest
+    if: always()
+    needs: [test, check]
+    steps:
+      - run: |
+          if [[ ${{ contains(needs.*.result, 'failure') }} == 'true' || ${{ contains(needs.*.result, 'cancelled') }} == 'true' ]]; then
+            echo "❌ Checks failed"
+            exit 1
+          fi
+          echo "✅ All checks passed"
