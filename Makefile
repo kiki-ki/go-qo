@@ -44,6 +44,10 @@ install-tool: ## install development tools
 releaser-check: ## run goreleaser check
 	go tool goreleaser check
 
+.PHONY: doc
+doc: ## open godoc in browser
+	go tool godoc & (sleep 1 && open http://localhost:6060/pkg/github.com/kiki-ki/go-qo/)
+
 .PHONY: help
 help: ## list up commands
 	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
