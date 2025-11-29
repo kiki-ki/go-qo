@@ -1,8 +1,18 @@
-# qo
+# 🥑 qo
 
-A command-line tool to query JSON data using SQL.
+A command-line tool for interactively querying JSON (... and soon, else formats) data using SQL.
 
-## Installation
+![qo](https://github.com/user-attachments/assets/65aa3399-f8fe-473c-af8e-3548c70360ba)
+
+## Install
+
+(Homebrew Tap)
+
+```bash
+brew install kiki-ki/tap/go-qo
+```
+
+(go install)
 
 ```bash
 go install github.com/kiki-ki/go-qo/cmd/qo@latest
@@ -28,15 +38,15 @@ cat data.json | qo -q "SELECT * FROM tmp" # Query piped data
 | `--output` | `-o` | Output format: `table` (default), `json`, `csv` |
 | `--query` | `-q` | SQL query (skips interactive mode) |
 
-## Interactive mode
+### Interactive mode usage
 
 | Key | Mode | Action |
 | - | - | - |
 | `Tab` | ALL | Switch between Query/Table mode |
 | `Esc/Ctrl+C` | ALL | Quit |
-| `Enter` | "QUERY" | Execute query and exit |
-| `↑/↓` or `j/k` | "TABLE" | Scroll rows |
-| `←/→` or `h/l` | "TABLE" | Scroll columns |
+| `Enter` | QUERY | Execute query and exit |
+| `↑↓` or `jk` | TABLE | Scroll rows |
+| `←→` or `hl` | TABLE | Scroll columns |
 
 ## License
 
