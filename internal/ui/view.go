@@ -52,7 +52,7 @@ func (m Model) renderHeader() string {
 // renderCellDetail returns the full content of the selected cell with position info.
 func (m Model) renderCellDetail() string {
 	if len(m.allRows) == 0 || len(m.allColumns) == 0 {
-		return styleTextMuted.Render("\n (no data)")
+		return styleTextBase.Render("\n (no data)")
 	}
 
 	rowIdx := m.table.Cursor()
