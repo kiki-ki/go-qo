@@ -1,21 +1,42 @@
 # 🥑 qo
 
-A command-line tool for interactively querying JSON (... and soon, else formats) data using SQL.
+qo is a command-line tool for interactively querying JSON (... and soon, other formats) data using SQL.
 
 ![qo](https://github.com/user-attachments/assets/65aa3399-f8fe-473c-af8e-3548c70360ba)
 
 ## Install
 
-(Homebrew Tap)
+### Homebrew Tap
 
 ```bash
 brew install kiki-ki/tap/go-qo
 ```
 
-(go install)
+### Shell Script
+
+Install the latest version to `./bin`:
 
 ```bash
-go install github.com/kiki-ki/go-qo/cmd/qo@latest
+curl -sfL https://raw.githubusercontent.com/kiki-ki/go-qo/main/install.sh | sh
+```
+
+Install to a specific directory:
+
+```bash
+curl -sfL https://raw.githubusercontent.com/kiki-ki/go-qo/main/install.sh
+ | BINDIR=./custom/bin sh
+```
+
+Install a specific version:
+
+```bash
+curl -sfL https://raw.githubusercontent.com/kiki-ki/go-qo/main/install.sh | VERSION=v1.0.0 sh
+```
+
+### Go Install
+
+```bash
+go install [github.com/kiki-ki/go-qo/cmd/qo@latest](https://github.com/kiki-ki/go-qo/cmd/qo@latest)
 ```
 
 ## Usage

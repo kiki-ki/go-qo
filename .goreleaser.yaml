@@ -1,5 +1,7 @@
 version: 2
 
+project_name: qo
+
 builds:
   - binary: qo
     env:
@@ -15,7 +17,11 @@ builds:
     main: ./cmd/qo
 
 archives:
-  - formats: [tar.gz]
+  - formats:
+      - tar.gz
+    files:
+      - LICENSE
+      - README.md
 
 # deprecated brews in goreleaser.
 # ref: https://goreleaser.com/deprecations/#brews
