@@ -34,8 +34,6 @@ jobs:
         run: |
           make tidy fmt
           git diff --exit-code
-      - name: Install golangci-lint
-        run: go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.61.0 # バージョン固定推奨
       - name: Check lint & vuln
         run: |
           make lint
