@@ -18,22 +18,14 @@ brew install kiki-ki/tap/go-qo
 <details>
 <summary>Shell Script</summary>
 
-Install the latest version to `./bin`:
-
 ```sh
 curl -sfL https://raw.githubusercontent.com/kiki-ki/go-qo/main/install.sh | sh
 ```
 
-Install to a specific directory:
-
 ```sh
-curl -sfL https://raw.githubusercontent.com/kiki-ki/go-qo/main/install.sh
- | BINDIR=./custom/bin sh
-```
-
-Install a specific version:
-
-```sh
+# specific directory
+curl -sfL https://raw.githubusercontent.com/kiki-ki/go-qo/main/install.sh | BINDIR=./custom/bin sh
+# specific version
 curl -sfL https://raw.githubusercontent.com/kiki-ki/go-qo/main/install.sh | VERSION=v1.0.0 sh
 ```
 
