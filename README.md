@@ -14,7 +14,7 @@ qo is a command-line tool for interactively querying JSON (... and soon, other f
 <summary>Homebrew Tap</summary>
 
 ```bash
-brew install kiki-ki/tap/go-qo
+brew install kiki-ki/tap/qo
 ```
 
 </details>
