@@ -10,9 +10,9 @@
 > 2. The peace of mind obtained by filtering data with SQL instead of complex syntax.
 
 **qo** is a minimalist TUI that lets you query JSON, CSV, and TSV files using SQL.
-Pick what you need with SQL, and get **Out** to the pipeline.
+**Query** what you need, and get it **Out** to the pipeline.
 
-![qo demo](https://github.com/user-attachments/assets/65aa3399-f8fe-473c-af8e-3548c70360ba)
+![qo demo](doc/demo/demo.gif)
 
 ## Why qo?
 
