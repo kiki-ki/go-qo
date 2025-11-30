@@ -9,7 +9,7 @@
 > 1. Abbreviation for **"Query & Out"**.
 > 2. The peace of mind obtained by filtering data with SQL instead of complex syntax.
 
-**qo** is a minimalist TUI that lets you query JSON, CSV, and TSV files using SQL.
+**qo** is a minimalist TUI that lets you query JSON, CSV, and TSV files using SQL.  
 **Query** what you need, and get it **Out** to the pipeline.
 
 ![qo demo](doc/demo/demo.gif)
