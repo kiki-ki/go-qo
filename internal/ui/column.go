@@ -24,7 +24,6 @@ func (m *Model) executeQuery() {
 		return
 	}
 
-	// Reset table state before updating
 	m.allColumns = cols
 	m.allRows = tableRows
 	m.colCursor = 0
@@ -34,81 +33,80 @@ func (m *Model) executeQuery() {
 	m.err = nil
 }
 
-// updateVisibleColumns updates the table with visible columns based on scroll offset.
+// visibleColumnEndIndex returns the end index for visible columns.
+func (m *Model) visibleColumnEndIndex() int {
+	endIdx := m.colOffset + m.visibleColumnCount()
+	if endIdx > len(m.allColumns) {
+		return len(m.allColumns)
+	}
+	return endIdx
+}
+
+// updateVisibleColumns rebuilds the table with visible columns based on scroll offset.
+// This resets the viewport, so cursor position must be restored afterwards.
 func (m *Model) updateVisibleColumns() {
 	if len(m.allColumns) == 0 {
 		return
 	}
 
-	visibleCount := m.visibleColumnCount()
-	endIdx := m.colOffset + visibleCount
-	if endIdx > len(m.allColumns) {
-		endIdx = len(m.allColumns)
-	}
+	endIdx := m.visibleColumnEndIndex()
+	numCols := endIdx - m.colOffset
+	colWidth := m.calculateColumnWidth(numCols)
 
-	// Calculate column width to fill available space
-	colWidth := m.calculateColumnWidth(endIdx - m.colOffset)
-
-	// Get visible columns from offset with dynamic width
-	visibleCols := make([]table.Column, endIdx-m.colOffset)
+	visibleCols := make([]table.Column, numCols)
 	for i, col := range m.allColumns[m.colOffset:endIdx] {
 		visibleCols[i] = table.Column{Title: col.Title, Width: colWidth}
 	}
 
-	// Build visible rows with cell marker
-	visibleRows := m.buildVisibleRows(endIdx)
-
-	// Save cursor position before updating
+	// Save cursor before SetRows resets it
 	cursor := m.table.Cursor()
+	visibleRows := m.buildVisibleRows(cursor)
 
-	// Clear rows first to avoid column/row mismatch during update
 	m.table.SetRows([]table.Row{})
 	m.table.SetColumns(visibleCols)
 	m.table.SetRows(visibleRows)
-	m.table.SetCursor(cursor)
+
+	// Restore cursor by moving from top (SetCursor alone doesn't update viewport)
+	m.table.GotoTop()
+	for i := 0; i < cursor; i++ {
+		m.table.MoveDown(1)
+	}
 }
 
-// updateCellMarker updates only the cell marker without resetting columns.
-// This is used when the row cursor changes to avoid viewport reset.
+// updateCellMarker updates only the cell marker without rebuilding columns.
+// This preserves the viewport scroll position.
 func (m *Model) updateCellMarker() {
 	if len(m.allColumns) == 0 || len(m.allRows) == 0 {
 		return
 	}
-
-	visibleCount := m.visibleColumnCount()
-	endIdx := m.colOffset + visibleCount
-	if endIdx > len(m.allColumns) {
-		endIdx = len(m.allColumns)
-	}
-
-	// Build and set visible rows - preserves viewport scroll position
-	m.table.SetRows(m.buildVisibleRows(endIdx))
+	m.table.SetRows(m.buildVisibleRows(m.table.Cursor()))
 }
 
 // buildVisibleRows builds table rows with the cell marker applied to the selected cell.
-func (m *Model) buildVisibleRows(endIdx int) []table.Row {
-	selectedRow := m.table.Cursor()
+func (m *Model) buildVisibleRows(selectedRow int) []table.Row {
+	endIdx := m.visibleColumnEndIndex()
 	selectedColInView := m.colCursor - m.colOffset
 
 	visibleRows := make([]table.Row, len(m.allRows))
 	for i, row := range m.allRows {
-		if m.colOffset < len(row) {
-			end := endIdx
-			if end > len(row) {
-				end = len(row)
-			}
-			visibleRow := make(table.Row, end-m.colOffset)
-			copy(visibleRow, row[m.colOffset:end])
-
-			// Add accent colored marker to selected cell
-			if i == selectedRow && selectedColInView >= 0 && selectedColInView < len(visibleRow) {
-				visibleRow[selectedColInView] = styleTextAccent.Render(cellMarker) + " " + visibleRow[selectedColInView]
-			}
-
-			visibleRows[i] = visibleRow
-		} else {
+		if m.colOffset >= len(row) {
 			visibleRows[i] = table.Row{}
+			continue
 		}
+
+		end := endIdx
+		if end > len(row) {
+			end = len(row)
+		}
+		visibleRow := make(table.Row, end-m.colOffset)
+		copy(visibleRow, row[m.colOffset:end])
+
+		// Add accent colored marker to selected cell
+		if i == selectedRow && selectedColInView >= 0 && selectedColInView < len(visibleRow) {
+			visibleRow[selectedColInView] = styleTextAccent.Render(cellMarker) + " " + visibleRow[selectedColInView]
+		}
+
+		visibleRows[i] = visibleRow
 	}
 	return visibleRows
 }
