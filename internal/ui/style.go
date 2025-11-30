@@ -2,6 +2,9 @@ package ui
 
 import "github.com/charmbracelet/lipgloss"
 
+// cellMarker is the character used to indicate the selected cell.
+const cellMarker = "▶"
+
 // Color palette with adaptive colors for light/dark terminal themes.
 // Reference: https://www.ditig.com/256-colors-cheat-sheet
 var (

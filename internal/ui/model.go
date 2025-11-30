@@ -87,9 +87,7 @@ func newTable() table.Model {
 		BorderForeground(colorBase).
 		BorderBottom(true).
 		Bold(false)
-	s.Selected = s.Selected.
-		Foreground(colorAccent).
-		Bold(false)
+	s.Selected = lipgloss.NewStyle()
 	t.SetStyles(s)
 
 	return t
@@ -118,12 +116,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 
+	prevCursor := m.table.Cursor()
 	m.table, _ = m.table.Update(msg)
 	m.textInput, cmd = m.textInput.Update(msg)
 	cmds = append(cmds, cmd)
 
 	if m.mode == ModeQuery {
 		m.executeQuery()
+	}
+
+	// Update cell marker when row cursor changes (lightweight, preserves viewport)
+	if m.mode == ModeTable && m.table.Cursor() != prevCursor {
+		m.updateCellMarker()
 	}
 
 	return m, tea.Batch(cmds...)

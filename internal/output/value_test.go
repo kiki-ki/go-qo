@@ -39,7 +39,31 @@ func TestFormatValueForDisplay(t *testing.T) {
 }
 
 func TestFormatValueRaw(t *testing.T) {
-	// FormatValueRaw is same as FormatValueForDisplay but without truncation
+	tests := []struct {
+		name  string
+		input any
+		want  string
+	}{
+		{"nil", nil, "(NULL)"},
+		{"string", "hello", "hello"},
+		{"newline", "line1\nline2", "line1\\nline2"},
+		{"tab", "col1\tcol2", "col1\\tcol2"},
+		{"carriage return", "a\rb", "a\\rb"},
+		{"crlf", "a\r\nb", "a\\r\\nb"},
+		{"multiple spaces", "a    b", "a b"},
+		{"bytes with control chars", []byte("a\tb\nc"), "a\\tb\\nc"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := output.FormatValueRaw(tt.input)
+			if got != tt.want {
+				t.Errorf("FormatValueRaw(%v) = %q, want %q", tt.input, got, tt.want)
+			}
+		})
+	}
+
+	// Test no truncation
 	long := string(make([]byte, 300))
 	got := output.FormatValueRaw(long)
 	if len(got) != 300 {
