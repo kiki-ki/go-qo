@@ -3,26 +3,8 @@ name: CI
 on:
   push:
     branches: [main]
-    paths:
-      - 'cmd/**'
-      - 'internal/**'
-      - 'testdata/**'
-      - 'go.mod'
-      - 'go.sum'
-      - 'Makefile'
-      - 'golangci.yml'
-      - '.github/workflows/ci.yml'
   pull_request:
     branches: [main]
-    paths:
-      - 'cmd/**'
-      - 'internal/**'
-      - 'testdata/**'
-      - 'go.mod'
-      - 'go.sum'
-      - 'Makefile'
-      - 'golangci.yml'
-      - '.github/workflows/ci.yml'
 
 jobs:
   test:
