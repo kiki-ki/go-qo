@@ -9,7 +9,7 @@
 > 1. Abbreviation for **"Query & Out"**.
 > 2. The peace of mind obtained by filtering JSON streams with SQL instead of complex path syntax.
 
-**qo** is a minimalist TUI that lets you query JSON streams using SQL.
+**qo** is a minimalist TUI that lets you query JSON and CSV files using SQL.
 Pick what you need with SQL, and get **Out** to the pipeline.
 
 ![qo demo](https://github.com/user-attachments/assets/65aa3399-f8fe-473c-af8e-3548c70360ba)
@@ -54,6 +54,18 @@ cat x.json | qo -q "SELECT * FROM tmp WHERE id > 100"
 qo -q "SELECT * FROM x JOIN y ON x.id = y.x_id" x.json y.json
 ```
 
+### CSV Support
+
+```bash
+# CSV input
+qo -i csv data.csv
+qo -i csv -q "SELECT name, age FROM data WHERE age > 30" data.csv
+
+# CSV without header row
+qo -i csv --no-header data.csv
+# Columns are named: col1, col2, col3, ...
+```
+
 ### Filter JSON API Response
 
 Interactively filter JSON response from any API.
@@ -66,9 +78,10 @@ curl -s https://api.github.com/repos/kiki-ki/go-qo/commits | qo
 
 | Flag | Short | Description |
 | :--- | :--- | :--- |
-| `--input` | `-i` | Input format: `json` (default) |
+| `--input` | `-i` | Input format: `json` (default), `csv` |
 | `--output` | `-o` | Output format: `table` (default), `json`, `csv` |
 | `--query` | `-q` | Run SQL query directly (Skip TUI) |
+| `--no-header` | | Treat first row as data, not header (CSV only) |
 
 ## UI Controls
 
@@ -83,7 +96,8 @@ curl -s https://api.github.com/repos/kiki-ki/go-qo/commits | qo
 ## Roadmap
 
 * [x] JSON Support
-* [ ] CSV / TSV Support (Coming soon\!)
+* [x] CSV Support
+* [ ] TSV Support
 
 ## License
 

@@ -21,6 +21,7 @@ var (
 	outputFormat string
 	inputFormat  string
 	queryFlag    string
+	noHeader     bool
 )
 
 const stdinTableName = "tmp"
@@ -42,8 +43,9 @@ var rootCmd = &cobra.Command{
 
 func init() {
 	rootCmd.Flags().StringVarP(&outputFormat, "output", "o", "table", "Output format: table (default) | json | csv")
-	rootCmd.Flags().StringVarP(&inputFormat, "input", "i", "json", "Input format: json (default)")
+	rootCmd.Flags().StringVarP(&inputFormat, "input", "i", "json", "Input format: json (default) | csv")
 	rootCmd.Flags().StringVarP(&queryFlag, "query", "q", "", "SQL query to execute (if omitted, interactive mode)")
+	rootCmd.Flags().BoolVar(&noHeader, "no-header", false, "Treat first row as data, not header (CSV only)")
 }
 
 // runConfig holds the parsed configuration for a query run.
@@ -71,7 +73,9 @@ func run(cmd *cobra.Command, args []string) error {
 	}
 	defer func() { _ = database.Close() }()
 
-	loader := input.NewLoader(database, input.Format(inputFormat))
+	loader := input.NewLoader(database, input.Format(inputFormat), &input.LoaderOptions{
+		NoHeader: noHeader,
+	})
 
 	hasStdinData, err := input.HasStdinData()
 	if err != nil {
