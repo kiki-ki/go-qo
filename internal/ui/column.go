@@ -1,6 +1,8 @@
 package ui
 
-import "github.com/charmbracelet/bubbles/table"
+import (
+	"github.com/charmbracelet/bubbles/table"
+)
 
 // executeQuery runs the current query and updates the table.
 func (m *Model) executeQuery() {
@@ -73,13 +75,17 @@ func (m *Model) updateVisibleColumns() {
 }
 
 // visibleColumnCount returns the number of columns that can fit in the view.
+// Limited to maxVisibleCols for better readability.
 func (m *Model) visibleColumnCount() int {
 	if m.width == 0 {
-		return defaultVisibleCols
+		return maxVisibleCols
 	}
 	count := (m.width - framePadding) / (defaultColumnWidth + columnBorderWidth)
 	if count < 1 {
 		return 1
+	}
+	if count > maxVisibleCols {
+		return maxVisibleCols
 	}
 	return count
 }

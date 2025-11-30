@@ -65,30 +65,3 @@ func TestSQLRowsToTable_EmptyResult(t *testing.T) {
 		t.Errorf("expected 0 rows, got %d", len(tableRows))
 	}
 }
-
-func TestFormatValue(t *testing.T) {
-	tests := []struct {
-		name  string
-		input any
-		want  string
-	}{
-		{"nil", nil, "(NULL)"},
-		{"string", "hello", "hello"},
-		{"int", 42, "42"},
-		{"int64", int64(100), "100"},
-		{"float64 whole", float64(5), "5"},
-		{"float64 decimal", 3.14, "3.14"},
-		{"bytes", []byte("test"), "test"},
-		{"bool true", true, "true"},
-		{"bool false", false, "false"},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := ui.FormatValue(tt.input)
-			if got != tt.want {
-				t.Errorf("FormatValue(%v) = %q, want %q", tt.input, got, tt.want)
-			}
-		})
-	}
-}

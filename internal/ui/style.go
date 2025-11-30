@@ -35,14 +35,9 @@ func init() {
 const (
 	defaultColumnWidth = 15
 	minColumnWidth     = 10
-	maxColumnWidth     = 50
-	defaultVisibleCols = 5
-)
-
-// Cell display settings.
-const (
-	maxCellDisplay    = 50 // max characters before truncation
-	columnBorderWidth = 2  // border width per column
+	maxColumnWidth     = 200
+	maxVisibleCols     = 5 // max columns to display at once
+	columnBorderWidth  = 2 // border width per column
 )
 
 // Layout offsets for terminal dimensions.

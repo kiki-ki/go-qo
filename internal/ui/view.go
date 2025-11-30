@@ -3,8 +3,11 @@ package ui
 import (
 	"fmt"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/charmbracelet/lipgloss"
+
+	"github.com/kiki-ki/go-qo/internal/output"
 )
 
 // View renders the UI display.
@@ -72,7 +75,18 @@ func (m Model) renderCellDetail() string {
 	value := row[m.colCursor]
 	pos := fmt.Sprintf("(%d/%d, %d/%d)", rowIdx+1, len(m.allRows), m.colCursor+1, len(m.allColumns))
 
-	return styleTextBase.Render(fmt.Sprintf("\n %s %s: %s", pos, colName, value))
+	// Calculate available width for value
+	// Frame: border (2) + padding (2) = 4
+	prefix := fmt.Sprintf(" %s %s: ", pos, colName)
+	prefixWidth := utf8.RuneCountInString(prefix)
+	// Total overhead: frame border/padding (4) + safety margin (4)
+	availableWidth := m.width - prefixWidth - 8
+	if availableWidth < 20 {
+		availableWidth = 20
+	}
+	truncatedValue := output.Truncate(value, availableWidth)
+
+	return styleTextBase.Render(fmt.Sprintf("\n%s%s", prefix, truncatedValue))
 }
 
 // renderError returns the error view. Always returns a line to prevent layout shift.

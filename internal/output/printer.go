@@ -80,7 +80,7 @@ func (p *Printer) scanRows(rows *sql.Rows, numCols int) ([][]any, error) {
 
 		row := make([]any, numCols)
 		for i, val := range values {
-			row[i] = p.normalizeValue(val)
+			row[i] = NormalizeValue(val)
 		}
 		result = append(result, row)
 	}
@@ -92,25 +92,6 @@ func (p *Printer) scanRows(rows *sql.Rows, numCols int) ([][]any, error) {
 	return result, nil
 }
 
-// Converts database values to appropriate Go types.
-func (p *Printer) normalizeValue(val any) any {
-	if val == nil {
-		return nil
-	}
-
-	switch v := val.(type) {
-	case []byte:
-		return string(v)
-	case float64:
-		if float64(int64(v)) == v {
-			return int64(v)
-		}
-		return v
-	default:
-		return v
-	}
-}
-
 // Print result formatted as a table.
 func (p *Printer) printTable(columns []string, data [][]any) error {
 	rows := make([][]string, len(data))
@@ -118,11 +99,7 @@ func (p *Printer) printTable(columns []string, data [][]any) error {
 	for i, row := range data {
 		r := make([]string, len(row))
 		for j, val := range row {
-			if val == nil {
-				r[j] = "(NULL)"
-			} else {
-				r[j] = fmt.Sprintf("%v", val)
-			}
+			r[j] = FormatValueForDisplay(val)
 		}
 		rows[i] = r
 	}
