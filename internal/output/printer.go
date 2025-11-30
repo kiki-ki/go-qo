@@ -125,14 +125,17 @@ func (p *Printer) printTable(columns []string, data [][]any) error {
 		rows[i] = r
 	}
 
+	// Create renderer that detects TTY for color support
+	renderer := lipgloss.NewRenderer(p.opts.Output)
+
 	t := table.New().
 		Border(lipgloss.NormalBorder()).
-		BorderStyle(lipgloss.NewStyle().Foreground(lipgloss.Color("240"))).
+		BorderStyle(renderer.NewStyle().Foreground(lipgloss.Color("240"))).
 		Headers(columns...).
 		Rows(rows...)
 
 	t.StyleFunc(func(row, col int) lipgloss.Style {
-		return lipgloss.NewStyle().Padding(0, 1)
+		return renderer.NewStyle().Padding(0, 1)
 	})
 
 	_, _ = fmt.Fprintln(p.opts.Output, t.Render())

@@ -143,3 +143,26 @@ func TestNewPrinter_DefaultOptions(t *testing.T) {
 		t.Error("expected non-nil printer")
 	}
 }
+
+func TestPrinter_PrintRows_NoANSICodesWhenNotTTY(t *testing.T) {
+	db := testutil.SetupTestDB(t)
+
+	rows, err := db.Query("SELECT * FROM test ORDER BY id")
+	if err != nil {
+		t.Fatalf("query failed: %v", err)
+	}
+	testutil.CloseRows(t, rows)
+
+	var buf bytes.Buffer
+	p := output.NewPrinter(&output.Options{Format: output.FormatTable, Output: &buf})
+
+	if err := p.PrintRows(rows); err != nil {
+		t.Fatalf("PrintRows failed: %v", err)
+	}
+
+	out := buf.String()
+	// ANSI escape codes start with ESC (0x1b or \033)
+	if strings.Contains(out, "\x1b[") || strings.Contains(out, "\033[") {
+		t.Error("table output should not contain ANSI escape codes when output is not a TTY")
+	}
+}
