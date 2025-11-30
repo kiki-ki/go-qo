@@ -55,7 +55,9 @@ func (p *Printer) PrintRows(rows *sql.Rows) error {
 	case FormatJSON:
 		return p.printJSON(columns, data)
 	case FormatCSV:
-		return p.printCSV(columns, data)
+		return p.printCSV(columns, data, ',')
+	case FormatTSV:
+		return p.printCSV(columns, data, '\t')
 	default:
 		return p.printTable(columns, data)
 	}
@@ -160,9 +162,10 @@ func (p *Printer) printJSON(columns []string, data [][]any) error {
 	return encoder.Encode(result)
 }
 
-// Print result formatted as a CSV.
-func (p *Printer) printCSV(columns []string, data [][]any) error {
+// Print result formatted as a CSV (or TSV with tab delimiter).
+func (p *Printer) printCSV(columns []string, data [][]any, delimiter rune) error {
 	w := csv.NewWriter(p.opts.Output)
+	w.Comma = delimiter
 	defer w.Flush()
 
 	if err := w.Write(columns); err != nil {

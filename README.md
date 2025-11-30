@@ -7,9 +7,9 @@
 > **qo** [cue-oh] *noun.*
 >
 > 1. Abbreviation for **"Query & Out"**.
-> 2. The peace of mind obtained by filtering JSON streams with SQL instead of complex path syntax.
+> 2. The peace of mind obtained by filtering data with SQL instead of complex syntax.
 
-**qo** is a minimalist TUI that lets you query JSON and CSV files using SQL.
+**qo** is a minimalist TUI that lets you query JSON, CSV, and TSV files using SQL.
 Pick what you need with SQL, and get **Out** to the pipeline.
 
 ![qo demo](https://github.com/user-attachments/assets/65aa3399-f8fe-473c-af8e-3548c70360ba)
@@ -51,37 +51,51 @@ qo x.json y.json
 
 # Non-interactive mode (Direct output)
 cat x.json | qo -q "SELECT * FROM tmp WHERE id > 100"
-qo -q "SELECT * FROM x JOIN y ON x.id = y.x_id" x.json y.json
+qo -q "SELECT * FROM x JOIN y ON x.id = y.x_id" x.json y.json"
 ```
 
-### CSV Support
+### Pipe-Friendly TUI
+
+TUI mode works seamlessly with pipes. Explore data interactively, then pass the result to other tools.
 
 ```bash
-# CSV input
-qo -i csv data.csv
-qo -i csv -q "SELECT name, age FROM data WHERE age > 30" data.csv
+# Fetch JSON API > Filter interactively with qo > Format with jq
+curl -s https://api.github.com/repos/kiki-ki/go-qo/commits | qo | jq '.[].sha'
 
-# CSV without header row
-qo -i csv --no-header data.csv
-# Columns are named: col1, col2, col3, ...
+# Explore > Filter > Compress
+cat large.json | qo | gzip > filtered.json.gz
 ```
 
-### Filter JSON API Response
+### Query Logs & Aggregate
 
-Interactively filter JSON response from any API.
+Use SQL to analyze structured data.
 
 ```bash
-curl -s https://api.github.com/repos/kiki-ki/go-qo/commits | qo
+# Filter error logs
+cat app.log | qo -q "SELECT timestamp, message FROM tmp WHERE level = 'error'"
+
+# Aggregate sales by region
+qo -i csv sales.csv -q "SELECT region, SUM(amount) FROM sales GROUP BY region"
+```
+
+### Convert Formats
+
+Transform between JSON, CSV, and TSV.
+
+```bash
+qo -o csv data.json -q "SELECT id, name FROM data"         # JSON → CSV
+qo -i csv -o json users.csv -q "SELECT * FROM users"       # CSV → JSON
+qo -i csv --no-header raw.csv -q "SELECT col1, col2 FROM raw"  # Headerless CSV
 ```
 
 ## Options
 
 | Flag | Short | Description |
 | :--- | :--- | :--- |
-| `--input` | `-i` | Input format: `json` (default), `csv` |
-| `--output` | `-o` | Output format: `table` (default), `json`, `csv` |
+| `--input` | `-i` | Input format: `json` (default), `csv`, `tsv` |
+| `--output` | `-o` | Output format: `table` (default), `json`, `csv`, `tsv` |
 | `--query` | `-q` | Run SQL query directly (Skip TUI) |
-| `--no-header` | | Treat first row as data, not header (CSV only) |
+| `--no-header` | | Treat first row as data, not header (CSV/TSV only) |
 
 ## UI Controls
 
@@ -92,12 +106,6 @@ curl -s https://api.github.com/repos/kiki-ki/go-qo/commits | qo
 | `Enter` | QUERY | **Output result to stdout** and Exit |
 | `↑` `↓` / `j` `k` | TABLE | Scroll rows |
 | `←` `→` / `h` `l` | TABLE | Scroll columns |
-
-## Roadmap
-
-* [x] JSON Support
-* [x] CSV Support
-* [ ] TSV Support
 
 ## License
 

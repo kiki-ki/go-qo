@@ -51,6 +51,19 @@ func TestPrinter_PrintRows(t *testing.T) {
 				}
 			},
 		},
+		{
+			name:   "tsv format",
+			format: output.FormatTSV,
+			check: func(t *testing.T, out string) {
+				lines := strings.Split(strings.TrimSpace(out), "\n")
+				if len(lines) != 3 || lines[0] != "id\tname" {
+					t.Errorf("unexpected TSV output: %s", out)
+				}
+				if !strings.Contains(lines[1], "\t") {
+					t.Errorf("TSV should use tab delimiter: %s", out)
+				}
+			},
+		},
 	}
 
 	for _, tt := range tests {

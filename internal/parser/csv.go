@@ -11,7 +11,8 @@ import (
 
 // CSVOptions configures CSV parsing behavior.
 type CSVOptions struct {
-	NoHeader bool // If true, first row is data, not header
+	NoHeader  bool // If true, first row is data, not header
+	Delimiter rune // Field delimiter (default: ',')
 }
 
 // CSVParser implements Parser interface for CSV files.
@@ -41,6 +42,11 @@ func (p *CSVParser) Parse(path string) (*ParsedData, error) {
 // ParseBytes parses CSV from a byte slice.
 func (p *CSVParser) ParseBytes(data []byte) (*ParsedData, error) {
 	reader := csv.NewReader(bytes.NewReader(data))
+
+	// Set custom delimiter if specified
+	if p.Options.Delimiter != 0 {
+		reader.Comma = p.Options.Delimiter
+	}
 
 	// Read all records first
 	records, err := reader.ReadAll()

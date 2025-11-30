@@ -154,3 +154,74 @@ func TestCSVParser_ParseFile(t *testing.T) {
 		t.Errorf("rows: got %d, want 3", len(result.Rows))
 	}
 }
+
+func TestCSVParser_NoHeader(t *testing.T) {
+	p := &parser.CSVParser{Options: parser.CSVOptions{NoHeader: true}}
+
+	result, err := p.ParseBytes([]byte("1,Alice,30\n2,Bob,25\n"))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Should have auto-generated column names
+	expectedCols := []string{"col1", "col2", "col3"}
+	for i, col := range result.Columns {
+		if col.Name != expectedCols[i] {
+			t.Errorf("column %d: got %s, want %s", i, col.Name, expectedCols[i])
+		}
+	}
+
+	// All rows should be data rows
+	if len(result.Rows) != 2 {
+		t.Errorf("rows: got %d, want 2", len(result.Rows))
+	}
+}
+
+func TestCSVParser_TSV(t *testing.T) {
+	p := &parser.CSVParser{Options: parser.CSVOptions{Delimiter: '\t'}}
+
+	result, err := p.ParseBytes([]byte("id\tname\tage\n1\tAlice\t30\n2\tBob\t25\n"))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	expectedCols := []string{"id", "name", "age"}
+	for i, col := range result.Columns {
+		if col.Name != expectedCols[i] {
+			t.Errorf("column %d: got %s, want %s", i, col.Name, expectedCols[i])
+		}
+	}
+
+	if len(result.Rows) != 2 {
+		t.Errorf("rows: got %d, want 2", len(result.Rows))
+	}
+
+	// Verify data
+	if result.Rows[0][1] != "Alice" {
+		t.Errorf("first row name: got %v, want Alice", result.Rows[0][1])
+	}
+}
+
+func TestCSVParser_TSV_NoHeader(t *testing.T) {
+	p := &parser.CSVParser{Options: parser.CSVOptions{
+		NoHeader:  true,
+		Delimiter: '\t',
+	}}
+
+	result, err := p.ParseBytes([]byte("1\tAlice\t30\n2\tBob\t25\n"))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Should have auto-generated column names
+	expectedCols := []string{"col1", "col2", "col3"}
+	for i, col := range result.Columns {
+		if col.Name != expectedCols[i] {
+			t.Errorf("column %d: got %s, want %s", i, col.Name, expectedCols[i])
+		}
+	}
+
+	if len(result.Rows) != 2 {
+		t.Errorf("rows: got %d, want 2", len(result.Rows))
+	}
+}

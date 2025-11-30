@@ -42,10 +42,10 @@ var rootCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.Flags().StringVarP(&outputFormat, "output", "o", "table", "Output format: table (default) | json | csv")
-	rootCmd.Flags().StringVarP(&inputFormat, "input", "i", "json", "Input format: json (default) | csv")
+	rootCmd.Flags().StringVarP(&outputFormat, "output", "o", "table", "Output format: table (default) | json | csv | tsv")
+	rootCmd.Flags().StringVarP(&inputFormat, "input", "i", "json", "Input format: json (default) | csv | tsv")
 	rootCmd.Flags().StringVarP(&queryFlag, "query", "q", "", "SQL query to execute (if omitted, interactive mode)")
-	rootCmd.Flags().BoolVar(&noHeader, "no-header", false, "Treat first row as data, not header (CSV only)")
+	rootCmd.Flags().BoolVar(&noHeader, "no-header", false, "Treat first row as data, not header (CSV/TSV only)")
 }
 
 // runConfig holds the parsed configuration for a query run.
