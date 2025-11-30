@@ -8,7 +8,7 @@ import (
 
 	"github.com/kiki-ki/go-qo/internal/cli"
 	"github.com/kiki-ki/go-qo/internal/output"
-	"github.com/kiki-ki/go-qo/testutil"
+	"github.com/kiki-ki/go-qo/internal/testutil"
 )
 
 func TestRun(t *testing.T) {

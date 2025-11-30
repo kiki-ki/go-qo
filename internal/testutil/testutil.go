@@ -49,7 +49,7 @@ func CreateTempJSON(t *testing.T, content string) string {
 // Use format subdirectories like "json/users.json".
 func TestdataPath(filename string) string {
 	_, file, _, _ := runtime.Caller(0)
-	return filepath.Join(filepath.Dir(file), "..", "testdata", filename)
+	return filepath.Join(filepath.Dir(file), "..", "..", "testdata", filename)
 }
 
 // JSONTestdataPath returns the absolute path to a JSON file in testdata/json.

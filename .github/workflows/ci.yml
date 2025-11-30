@@ -3,14 +3,32 @@ name: CI
 on:
   push:
     branches: [main]
+    paths:
+      - 'cmd/**'
+      - 'internal/**'
+      - 'testdata/**'
+      - 'go.mod'
+      - 'go.sum'
+      - 'Makefile'
+      - 'golangci.yml'
+      - '.github/workflows/ci.yml'
   pull_request:
     branches: [main]
+    paths:
+      - 'cmd/**'
+      - 'internal/**'
+      - 'testdata/**'
+      - 'go.mod'
+      - 'go.sum'
+      - 'Makefile'
+      - 'golangci.yml'
+      - '.github/workflows/ci.yml'
 
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v6r
       - name: Set up Go
         uses: actions/setup-go@v6
         with:

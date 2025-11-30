@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/kiki-ki/go-qo/internal/parser"
-	"github.com/kiki-ki/go-qo/testutil"
+	"github.com/kiki-ki/go-qo/internal/testutil"
 )
 
 func TestJSONParser_ParseBytes(t *testing.T) {

@@ -10,7 +10,7 @@ import (
 	_ "modernc.org/sqlite"
 
 	"github.com/kiki-ki/go-qo/internal/output"
-	"github.com/kiki-ki/go-qo/testutil"
+	"github.com/kiki-ki/go-qo/internal/testutil"
 )
 
 func TestPrinter_PrintRows(t *testing.T) {

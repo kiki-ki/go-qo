@@ -3,8 +3,8 @@ package ui_test
 import (
 	"testing"
 
+	"github.com/kiki-ki/go-qo/internal/testutil"
 	"github.com/kiki-ki/go-qo/internal/ui"
-	"github.com/kiki-ki/go-qo/testutil"
 )
 
 func TestSQLRowsToTable(t *testing.T) {
