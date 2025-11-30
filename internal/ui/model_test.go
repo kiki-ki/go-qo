@@ -6,8 +6,8 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
+	"github.com/kiki-ki/go-qo/internal/testutil"
 	"github.com/kiki-ki/go-qo/internal/ui"
-	"github.com/kiki-ki/go-qo/testutil"
 )
 
 func TestNewModel(t *testing.T) {

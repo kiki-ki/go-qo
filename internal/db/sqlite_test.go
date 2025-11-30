@@ -5,7 +5,7 @@ import (
 
 	"github.com/kiki-ki/go-qo/internal/db"
 	"github.com/kiki-ki/go-qo/internal/parser"
-	"github.com/kiki-ki/go-qo/testutil"
+	"github.com/kiki-ki/go-qo/internal/testutil"
 )
 
 func TestNew(t *testing.T) {
