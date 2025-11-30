@@ -3,6 +3,7 @@ package ui
 import (
 	"database/sql"
 	"fmt"
+	"os"
 
 	"github.com/charmbracelet/bubbles/table"
 	"github.com/charmbracelet/bubbles/textinput"
@@ -86,9 +87,7 @@ func newTable() table.Model {
 		BorderForeground(colorBase).
 		BorderBottom(true).
 		Bold(false)
-	s.Selected = s.Selected.
-		Foreground(colorAccent).
-		Bold(false)
+	s.Selected = lipgloss.NewStyle()
 	t.SetStyles(s)
 
 	return t
@@ -117,12 +116,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 
+	prevCursor := m.table.Cursor()
 	m.table, _ = m.table.Update(msg)
 	m.textInput, cmd = m.textInput.Update(msg)
 	cmds = append(cmds, cmd)
 
 	if m.mode == ModeQuery {
 		m.executeQuery()
+	}
+
+	// Update cell marker when row cursor changes (lightweight, preserves viewport)
+	if m.mode == ModeTable && m.table.Cursor() != prevCursor {
+		m.updateCellMarker()
 	}
 
 	return m, tea.Batch(cmds...)
@@ -138,8 +143,24 @@ func (m *Model) handleWindowResize(msg tea.WindowSizeMsg) {
 }
 
 // Run starts the UI application and returns the final query if any.
+// It uses /dev/tty for input/output so that stdin/stdout remain available for piping.
 func Run(db *sql.DB, tableNames []string) (*Result, error) {
-	p := tea.NewProgram(NewModel(db, tableNames), tea.WithAltScreen())
+	tty, err := os.OpenFile("/dev/tty", os.O_RDWR, 0)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open /dev/tty: %w", err)
+	}
+	defer func() { _ = tty.Close() }()
+
+	// Set lipgloss to use tty for color detection and reinitialize styles
+	lipgloss.SetDefaultRenderer(lipgloss.NewRenderer(tty))
+	initStyles()
+
+	p := tea.NewProgram(
+		NewModel(db, tableNames),
+		tea.WithAltScreen(),
+		tea.WithInput(tty),
+		tea.WithOutput(tty),
+	)
 
 	m, err := p.Run()
 	if err != nil {

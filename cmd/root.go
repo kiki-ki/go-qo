@@ -21,6 +21,7 @@ var (
 	outputFormat string
 	inputFormat  string
 	queryFlag    string
+	noHeader     bool
 )
 
 const stdinTableName = "tmp"
@@ -28,22 +29,23 @@ const stdinTableName = "tmp"
 var rootCmd = &cobra.Command{
 	Version: version,
 	Use:     "qo [files...]",
-	Short:   "Execute SQL queries on JSON files",
-	Long:    "qo is a command-line tool that allows you to query JSON files using SQL.",
+	Short:   "Query structured data with SQL",
+	Long:    "qo is a TUI/CLI tool that lets you query structured data using SQL.",
 	Example: strings.Join([]string{
-		"  qo data.json                              # Interactive mode",
-		"  cat data.json | qo                        # Pipe to interactive mode",
-		`  qo -q "SELECT * FROM data" data.json      # CLI mode"`,
-		`  cat data.json | qo -q "SELECT * FROM tmp" # Pipe to CLI mode`,
+		"  qo data.json                                        # Interactive TUI mode",
+		"  cat data.json | qo                                  # Pipe to TUI, output to stdout",
+		`  qo -q "SELECT * FROM data" data.json                # Direct query mode`,
+		`  qo -i csv -o json data.csv -q "SELECT * FROM data"  # CSV to JSON`,
 	}, "\n"),
 	Args: cobra.ArbitraryArgs,
 	RunE: runQuery,
 }
 
 func init() {
-	rootCmd.Flags().StringVarP(&outputFormat, "output", "o", "table", "Output format: table (default) | json | csv")
-	rootCmd.Flags().StringVarP(&inputFormat, "input", "i", "json", "Input format: json (default)")
+	rootCmd.Flags().StringVarP(&outputFormat, "output", "o", "json", "Output format: json (default) | table | csv | tsv")
+	rootCmd.Flags().StringVarP(&inputFormat, "input", "i", "json", "Input format: json (default) | csv | tsv")
 	rootCmd.Flags().StringVarP(&queryFlag, "query", "q", "", "SQL query to execute (if omitted, interactive mode)")
+	rootCmd.Flags().BoolVar(&noHeader, "no-header", false, "Treat first row as data, not header (CSV/TSV only)")
 }
 
 // runConfig holds the parsed configuration for a query run.
@@ -71,7 +73,9 @@ func run(cmd *cobra.Command, args []string) error {
 	}
 	defer func() { _ = database.Close() }()
 
-	loader := input.NewLoader(database, input.Format(inputFormat))
+	loader := input.NewLoader(database, input.Format(inputFormat), &input.LoaderOptions{
+		NoHeader: noHeader,
+	})
 
 	hasStdinData, err := input.HasStdinData()
 	if err != nil {

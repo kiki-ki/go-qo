@@ -19,7 +19,7 @@ type Options struct {
 
 func DefaultOptions() *Options {
 	return &Options{
-		Format: FormatTable,
+		Format: FormatJSON,
 		Output: os.Stdout,
 	}
 }
@@ -55,7 +55,9 @@ func (p *Printer) PrintRows(rows *sql.Rows) error {
 	case FormatJSON:
 		return p.printJSON(columns, data)
 	case FormatCSV:
-		return p.printCSV(columns, data)
+		return p.printCSV(columns, data, ',')
+	case FormatTSV:
+		return p.printCSV(columns, data, '\t')
 	default:
 		return p.printTable(columns, data)
 	}
@@ -78,7 +80,7 @@ func (p *Printer) scanRows(rows *sql.Rows, numCols int) ([][]any, error) {
 
 		row := make([]any, numCols)
 		for i, val := range values {
-			row[i] = p.normalizeValue(val)
+			row[i] = NormalizeValue(val)
 		}
 		result = append(result, row)
 	}
@@ -90,25 +92,6 @@ func (p *Printer) scanRows(rows *sql.Rows, numCols int) ([][]any, error) {
 	return result, nil
 }
 
-// Converts database values to appropriate Go types.
-func (p *Printer) normalizeValue(val any) any {
-	if val == nil {
-		return nil
-	}
-
-	switch v := val.(type) {
-	case []byte:
-		return string(v)
-	case float64:
-		if float64(int64(v)) == v {
-			return int64(v)
-		}
-		return v
-	default:
-		return v
-	}
-}
-
 // Print result formatted as a table.
 func (p *Printer) printTable(columns []string, data [][]any) error {
 	rows := make([][]string, len(data))
@@ -116,23 +99,22 @@ func (p *Printer) printTable(columns []string, data [][]any) error {
 	for i, row := range data {
 		r := make([]string, len(row))
 		for j, val := range row {
-			if val == nil {
-				r[j] = "(NULL)"
-			} else {
-				r[j] = fmt.Sprintf("%v", val)
-			}
+			r[j] = FormatValueForDisplay(val)
 		}
 		rows[i] = r
 	}
 
+	// Create renderer that detects TTY for color support
+	renderer := lipgloss.NewRenderer(p.opts.Output)
+
 	t := table.New().
 		Border(lipgloss.NormalBorder()).
-		BorderStyle(lipgloss.NewStyle().Foreground(lipgloss.Color("240"))).
+		BorderStyle(renderer.NewStyle().Foreground(lipgloss.Color("240"))).
 		Headers(columns...).
 		Rows(rows...)
 
 	t.StyleFunc(func(row, col int) lipgloss.Style {
-		return lipgloss.NewStyle().Padding(0, 1)
+		return renderer.NewStyle().Padding(0, 1)
 	})
 
 	_, _ = fmt.Fprintln(p.opts.Output, t.Render())
@@ -157,9 +139,10 @@ func (p *Printer) printJSON(columns []string, data [][]any) error {
 	return encoder.Encode(result)
 }
 
-// Print result formatted as a CSV.
-func (p *Printer) printCSV(columns []string, data [][]any) error {
+// Print result formatted as a CSV (or TSV with tab delimiter).
+func (p *Printer) printCSV(columns []string, data [][]any, delimiter rune) error {
 	w := csv.NewWriter(p.opts.Output)
+	w.Comma = delimiter
 	defer w.Flush()
 
 	if err := w.Write(columns); err != nil {

@@ -9,17 +9,27 @@ import (
 	"github.com/kiki-ki/go-qo/internal/parser"
 )
 
+// LoaderOptions configures loader behavior.
+type LoaderOptions struct {
+	NoHeader bool // CSV: treat first row as data, not header
+}
+
 // Loader handles loading data into the database.
 type Loader struct {
-	db     *db.DB
-	format Format
+	db      *db.DB
+	format  Format
+	options *LoaderOptions
 }
 
 // NewLoader creates a new Loader.
-func NewLoader(database *db.DB, format Format) *Loader {
+func NewLoader(database *db.DB, format Format, options *LoaderOptions) *Loader {
+	if options == nil {
+		options = &LoaderOptions{}
+	}
 	return &Loader{
-		db:     database,
-		format: format,
+		db:      database,
+		format:  format,
+		options: options,
 	}
 }
 
@@ -79,6 +89,10 @@ func (l *Loader) parseBytes(data []byte) (*parser.ParsedData, error) {
 	switch l.format {
 	case FormatJSON:
 		return parser.ParseJSONBytes(data)
+	case FormatCSV:
+		return parser.ParseCSVBytes(data, parser.CSVOptions{NoHeader: l.options.NoHeader})
+	case FormatTSV:
+		return parser.ParseCSVBytes(data, parser.CSVOptions{NoHeader: l.options.NoHeader, Delimiter: '\t'})
 	default:
 		return nil, fmt.Errorf("unsupported format: %s", l.format)
 	}
@@ -89,6 +103,10 @@ func (l *Loader) parseFile(path string) (*parser.ParsedData, error) {
 	switch l.format {
 	case FormatJSON:
 		return parser.ParseFile(path)
+	case FormatCSV:
+		return parser.ParseCSVFile(path, parser.CSVOptions{NoHeader: l.options.NoHeader})
+	case FormatTSV:
+		return parser.ParseCSVFile(path, parser.CSVOptions{NoHeader: l.options.NoHeader, Delimiter: '\t'})
 	default:
 		return nil, fmt.Errorf("unsupported format: %s", l.format)
 	}

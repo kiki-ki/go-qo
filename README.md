@@ -1,78 +1,111 @@
-# 🥑 qo
+# 🥢 qo
 
 [![CI](https://github.com/kiki-ki/go-qo/actions/workflows/ci.yml/badge.svg)](https://github.com/kiki-ki/go-qo/actions/workflows/ci.yml)
 [![License](https://img.shields.io/github/license/kiki-ki/go-qo)](https://github.com/kiki-ki/go-qo/blob/main/LICENSE)
 [![Go Report](https://goreportcard.com/badge/github.com/kiki-ki/go-qo)](https://goreportcard.com/report/github.com/kiki-ki/go-qo)
 
-qo is a command-line tool for interactively querying JSON (... and soon, other formats) data using SQL.
+> **qo** [cue-oh] *noun.*
+>
+> 1. Abbreviation for **"Query & Out"**.
+> 2. The peace of mind obtained by filtering data with SQL instead of complex syntax.
 
-![qo](https://github.com/user-attachments/assets/65aa3399-f8fe-473c-af8e-3548c70360ba)
+**qo** is a minimalist TUI that lets you query JSON, CSV, and TSV files using SQL.
+Pick what you need with SQL, and get **Out** to the pipeline.
+
+![qo demo](https://github.com/user-attachments/assets/65aa3399-f8fe-473c-af8e-3548c70360ba)
+
+## Why qo?
+
+* **Muscle Memory**: Use the SQL syntax you've known for years.
+* **Pipeline Native**: Reads from `stdin`, writes to `stdout`.
+* **Interactive**: Don't guess the query. See the result, then hit Enter.
 
 ## Install
 
-<details>
-<summary>Homebrew Tap</summary>
+### Homebrew (macOS/Linux)
 
 ```bash
 brew install kiki-ki/tap/qo
 ```
 
-</details>
+### Shell Script
 
-<details>
-<summary>Shell Script</summary>
-
-```sh
+```bash
 curl -sfL https://raw.githubusercontent.com/kiki-ki/go-qo/main/install.sh | sh
 ```
 
-```sh
-# specific directory
-curl -sfL https://raw.githubusercontent.com/kiki-ki/go-qo/main/install.sh | BINDIR=./custom/bin sh
-# specific version
-curl -sfL https://raw.githubusercontent.com/kiki-ki/go-qo/main/install.sh | VERSION=v1.0.0 sh
-```
+### Go Install
 
-</details>
-
-<details>
-<summary>Go Install</summary>
-
-```sh
+```bash
 go install github.com/kiki-ki/go-qo/cmd/qo@latest
 ```
 
-</details>
-
 ## Usage
 
-```sh
-# Interactive mode (default)
-qo data.json                              # Open interactive editor
-cat data.json | qo                        # Pipe data to interactive editor
+**qo** reads from both file arguments and standard input (stdin).
 
-# CLI mode
-qo -q "SELECT * FROM data" data.json      # Direct query execution
-cat data.json | qo -q "SELECT * FROM tmp" # Query piped data
+```bash
+# Interactive mode (Open TUI)
+cat x.json | qo
+qo x.json y.json
+
+# Non-interactive mode (Direct output)
+cat x.json | qo -q "SELECT * FROM tmp WHERE id > 100"
+qo -q "SELECT * FROM x JOIN y ON x.id = y.x_id" x.json y.json"
 ```
 
-### Options
+### Pipe-Friendly TUI
+
+TUI mode works seamlessly with pipes. Explore data interactively, then pass the result to other tools.
+
+```bash
+# Fetch JSON API > Filter interactively with qo > Format with jq
+curl -s https://api.github.com/repos/kiki-ki/go-qo/commits | qo | jq '.[].sha'
+
+# Explore > Filter > Compress
+cat large.json | qo | gzip > filtered.json.gz
+```
+
+### Query Logs & Aggregate
+
+Use SQL to analyze structured data.
+
+```bash
+# Filter error logs
+cat app_json.log | qo -q "SELECT timestamp, message FROM tmp WHERE level = 'error'"
+
+# Aggregate sales by region
+qo -i csv sales.csv -o csv -q "SELECT region, SUM(amount) FROM sales GROUP BY region"
+```
+
+### Convert Formats
+
+Transform between JSON, CSV, and TSV.
+
+```bash
+qo -o csv data.json -q "SELECT id, name FROM data"             # JSON → CSV
+qo -i csv -o json users.csv -q "SELECT * FROM users"           # CSV → JSON
+qo -i csv --no-header raw.csv -q "SELECT col1, col2 FROM raw"  # Headerless CSV
+```
+
+## Options
 
 | Flag | Short | Description |
-|------|-------|-------------|
-| `--input` | `-i` | Input format: `json` (default) |
-| `--output` | `-o` | Output format: `table` (default), `json`, `csv` |
-| `--query` | `-q` | SQL query (skips interactive mode) |
+| :--- | :--- | :--- |
+| `--input` | `-i` | Input format: `json` (default), `csv`, `tsv` |
+| `--output` | `-o` | Output format: `json` (default), `table`, `csv`, `tsv` |
+| `--query` | `-q` | Run SQL query directly (Skip TUI) |
+| `--no-header` | | Treat first row as data, not header (CSV/TSV only) |
 
-### Interactive mode usage
+## UI Controls
 
 | Key | Mode | Action |
-| - | - | - |
+| :--- | :--- | :--- |
 | `Tab` | ALL | Switch between Query/Table mode |
-| `Esc/Ctrl+C` | ALL | Quit |
-| `Enter` | QUERY | Execute query and exit |
-| `↑↓` or `jk` | TABLE | Scroll rows |
-| `←→` or `hl` | TABLE | Scroll columns |
+| `Esc` / `Ctrl+C` | ALL | Quit (Output nothing) |
+| `Enter` | QUERY | **Output result to stdout** and Exit |
+| `↑` `↓` / `j` `k` | TABLE | Scroll rows |
+| `←` `→` / `h` `l` | TABLE | Scroll columns |
 
 ## License
 

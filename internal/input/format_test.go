@@ -8,11 +8,17 @@ import (
 
 func TestFormats(t *testing.T) {
 	formats := input.Formats()
-	if len(formats) == 0 {
-		t.Error("expected at least one format")
+	if len(formats) != 3 {
+		t.Errorf("expected 3 formats, got %d", len(formats))
 	}
 	if formats[0] != "json" {
 		t.Errorf("expected json, got %s", formats[0])
+	}
+	if formats[1] != "csv" {
+		t.Errorf("expected csv, got %s", formats[1])
+	}
+	if formats[2] != "tsv" {
+		t.Errorf("expected tsv, got %s", formats[2])
 	}
 }
 
@@ -22,7 +28,10 @@ func TestIsValidFormat(t *testing.T) {
 		want bool
 	}{
 		{"json", true},
+		{"csv", true},
+		{"tsv", true},
 		{"JSON", false}, // case sensitive
+		{"CSV", false},  // case sensitive
 		{"xml", false},
 		{"", false},
 	}

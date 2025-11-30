@@ -17,7 +17,7 @@ type Options struct {
 // DefaultOptions returns default CLI options.
 func DefaultOptions() *Options {
 	return &Options{
-		Format: output.FormatTable,
+		Format: output.FormatJSON,
 		Output: os.Stdout,
 	}
 }

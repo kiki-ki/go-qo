@@ -16,7 +16,7 @@ func TestNewLoader(t *testing.T) {
 	}
 	testutil.CloseDB(t, database)
 
-	loader := input.NewLoader(database, input.FormatJSON)
+	loader := input.NewLoader(database, input.FormatJSON, nil)
 	if loader == nil {
 		t.Fatal("expected non-nil loader")
 	}
@@ -99,7 +99,7 @@ func TestLoader_LoadFiles(t *testing.T) {
 			}
 			testutil.CloseDB(t, database)
 
-			loader := input.NewLoader(database, tt.format)
+			loader := input.NewLoader(database, tt.format, nil)
 			err = loader.LoadFiles([]string{tt.filePath})
 
 			if tt.wantErr {
@@ -147,7 +147,7 @@ func TestLoader_LoadReader(t *testing.T) {
 	jsonData := `[{"id": 1, "name": "Alice"}, {"id": 2, "name": "Bob"}]`
 	reader := strings.NewReader(jsonData)
 
-	loader := input.NewLoader(database, input.FormatJSON)
+	loader := input.NewLoader(database, input.FormatJSON, nil)
 	if err := loader.LoadReader(reader, "users"); err != nil {
 		t.Fatalf("LoadReader failed: %v", err)
 	}
@@ -193,7 +193,7 @@ func TestLoader_LoadReader_InvalidJSON(t *testing.T) {
 			testutil.CloseDB(t, database)
 
 			reader := strings.NewReader(tt.jsonData)
-			loader := input.NewLoader(database, input.FormatJSON)
+			loader := input.NewLoader(database, input.FormatJSON, nil)
 			err = loader.LoadReader(reader, "test")
 
 			if tt.wantErr && err == nil {
@@ -217,7 +217,7 @@ func TestLoader_LoadFiles_MultipleFiles(t *testing.T) {
 		testutil.JSONTestdataPath("multiple.json"),
 		testutil.JSONTestdataPath("nested.json"),
 	}
-	loader := input.NewLoader(database, input.FormatJSON)
+	loader := input.NewLoader(database, input.FormatJSON, nil)
 	if err := loader.LoadFiles(paths); err != nil {
 		t.Fatalf("LoadFiles failed: %v", err)
 	}

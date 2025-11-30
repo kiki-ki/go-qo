@@ -59,6 +59,12 @@ type Parser interface {
 	SupportedExtensions() []string
 }
 
+// ByteParser defines the interface for parsers that can parse byte slices.
+type ByteParser interface {
+	Parser
+	ParseBytes(data []byte) (*ParsedData, error)
+}
+
 var registry = make(map[string]Parser)
 
 // Register adds a parser to the registry.
@@ -83,5 +89,17 @@ func ParseFile(path string) (*ParsedData, error) {
 	if err != nil {
 		return nil, err
 	}
+	return p.Parse(path)
+}
+
+// ParseCSVBytes parses CSV data from a byte slice.
+func ParseCSVBytes(data []byte, options CSVOptions) (*ParsedData, error) {
+	p := &CSVParser{Options: options}
+	return p.ParseBytes(data)
+}
+
+// ParseCSVFile parses a CSV file.
+func ParseCSVFile(path string, options CSVOptions) (*ParsedData, error) {
+	p := &CSVParser{Options: options}
 	return p.Parse(path)
 }

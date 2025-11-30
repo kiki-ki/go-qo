@@ -2,6 +2,9 @@ package ui
 
 import "github.com/charmbracelet/lipgloss"
 
+// cellMarker is the character used to indicate the selected cell.
+const cellMarker = "▶"
+
 // Color palette with adaptive colors for light/dark terminal themes.
 // Reference: https://www.ditig.com/256-colors-cheat-sheet
 var (
@@ -13,24 +16,31 @@ var (
 
 // Styles
 var (
-	styleTextBase   = lipgloss.NewStyle().Foreground(colorBase)
-	styleTextMuted  = lipgloss.NewStyle().Foreground(colorMuted)
-	styleTextAccent = lipgloss.NewStyle().Foreground(colorAccent)
-	styleTextError  = lipgloss.NewStyle().Foreground(colorError)
+	styleTextBase   lipgloss.Style
+	styleTextMuted  lipgloss.Style
+	styleTextAccent lipgloss.Style
+	styleTextError  lipgloss.Style
 )
+
+// initStyles initializes styles after the renderer is configured.
+func initStyles() {
+	styleTextBase = lipgloss.NewStyle().Foreground(colorBase)
+	styleTextMuted = lipgloss.NewStyle().Foreground(colorMuted)
+	styleTextAccent = lipgloss.NewStyle().Foreground(colorAccent)
+	styleTextError = lipgloss.NewStyle().Foreground(colorError)
+}
+
+func init() {
+	initStyles()
+}
 
 // Table column dimensions.
 const (
 	defaultColumnWidth = 15
 	minColumnWidth     = 10
-	maxColumnWidth     = 50
-	defaultVisibleCols = 5
-)
-
-// Cell display settings.
-const (
-	maxCellDisplay    = 50 // max characters before truncation
-	columnBorderWidth = 2  // border width per column
+	maxColumnWidth     = 200
+	maxVisibleCols     = 5 // max columns to display at once
+	columnBorderWidth  = 2 // border width per column
 )
 
 // Layout offsets for terminal dimensions.

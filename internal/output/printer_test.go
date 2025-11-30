@@ -51,6 +51,19 @@ func TestPrinter_PrintRows(t *testing.T) {
 				}
 			},
 		},
+		{
+			name:   "tsv format",
+			format: output.FormatTSV,
+			check: func(t *testing.T, out string) {
+				lines := strings.Split(strings.TrimSpace(out), "\n")
+				if len(lines) != 3 || lines[0] != "id\tname" {
+					t.Errorf("unexpected TSV output: %s", out)
+				}
+				if !strings.Contains(lines[1], "\t") {
+					t.Errorf("TSV should use tab delimiter: %s", out)
+				}
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -141,5 +154,28 @@ func TestNewPrinter_DefaultOptions(t *testing.T) {
 	p := output.NewPrinter(nil)
 	if p == nil {
 		t.Error("expected non-nil printer")
+	}
+}
+
+func TestPrinter_PrintRows_NoANSICodesWhenNotTTY(t *testing.T) {
+	db := testutil.SetupTestDB(t)
+
+	rows, err := db.Query("SELECT * FROM test ORDER BY id")
+	if err != nil {
+		t.Fatalf("query failed: %v", err)
+	}
+	testutil.CloseRows(t, rows)
+
+	var buf bytes.Buffer
+	p := output.NewPrinter(&output.Options{Format: output.FormatTable, Output: &buf})
+
+	if err := p.PrintRows(rows); err != nil {
+		t.Fatalf("PrintRows failed: %v", err)
+	}
+
+	out := buf.String()
+	// ANSI escape codes start with ESC (0x1b or \033)
+	if strings.Contains(out, "\x1b[") || strings.Contains(out, "\033[") {
+		t.Error("table output should not contain ANSI escape codes when output is not a TTY")
 	}
 }
