@@ -13,11 +13,23 @@ var (
 
 // Styles
 var (
-	styleTextBase   = lipgloss.NewStyle().Foreground(colorBase)
-	styleTextMuted  = lipgloss.NewStyle().Foreground(colorMuted)
-	styleTextAccent = lipgloss.NewStyle().Foreground(colorAccent)
-	styleTextError  = lipgloss.NewStyle().Foreground(colorError)
+	styleTextBase   lipgloss.Style
+	styleTextMuted  lipgloss.Style
+	styleTextAccent lipgloss.Style
+	styleTextError  lipgloss.Style
 )
+
+// initStyles initializes styles after the renderer is configured.
+func initStyles() {
+	styleTextBase = lipgloss.NewStyle().Foreground(colorBase)
+	styleTextMuted = lipgloss.NewStyle().Foreground(colorMuted)
+	styleTextAccent = lipgloss.NewStyle().Foreground(colorAccent)
+	styleTextError = lipgloss.NewStyle().Foreground(colorError)
+}
+
+func init() {
+	initStyles()
+}
 
 // Table column dimensions.
 const (
