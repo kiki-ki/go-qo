@@ -19,7 +19,7 @@ type Options struct {
 
 func DefaultOptions() *Options {
 	return &Options{
-		Format: FormatTable,
+		Format: FormatJSON,
 		Output: os.Stdout,
 	}
 }

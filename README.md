@@ -72,10 +72,10 @@ Use SQL to analyze structured data.
 
 ```bash
 # Filter error logs
-cat app.log | qo -q "SELECT timestamp, message FROM tmp WHERE level = 'error'"
+cat app_json.log | qo -q "SELECT timestamp, message FROM tmp WHERE level = 'error'"
 
 # Aggregate sales by region
-qo -i csv sales.csv -q "SELECT region, SUM(amount) FROM sales GROUP BY region"
+qo -i csv sales.csv -o csv -q "SELECT region, SUM(amount) FROM sales GROUP BY region"
 ```
 
 ### Convert Formats
@@ -83,8 +83,8 @@ qo -i csv sales.csv -q "SELECT region, SUM(amount) FROM sales GROUP BY region"
 Transform between JSON, CSV, and TSV.
 
 ```bash
-qo -o csv data.json -q "SELECT id, name FROM data"         # JSON → CSV
-qo -i csv -o json users.csv -q "SELECT * FROM users"       # CSV → JSON
+qo -o csv data.json -q "SELECT id, name FROM data"             # JSON → CSV
+qo -i csv -o json users.csv -q "SELECT * FROM users"           # CSV → JSON
 qo -i csv --no-header raw.csv -q "SELECT col1, col2 FROM raw"  # Headerless CSV
 ```
 
@@ -93,7 +93,7 @@ qo -i csv --no-header raw.csv -q "SELECT col1, col2 FROM raw"  # Headerless CSV
 | Flag | Short | Description |
 | :--- | :--- | :--- |
 | `--input` | `-i` | Input format: `json` (default), `csv`, `tsv` |
-| `--output` | `-o` | Output format: `table` (default), `json`, `csv`, `tsv` |
+| `--output` | `-o` | Output format: `json` (default), `table`, `csv`, `tsv` |
 | `--query` | `-q` | Run SQL query directly (Skip TUI) |
 | `--no-header` | | Treat first row as data, not header (CSV/TSV only) |
 
