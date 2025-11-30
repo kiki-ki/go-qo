@@ -56,11 +56,18 @@ func (m *Model) handleTableNavigation(msg tea.KeyMsg) {
 	}
 
 	// Adjust scroll offset to keep cursor visible
+	prevOffset := m.colOffset
 	visibleCols := m.visibleColumnCount()
 	if m.colCursor < m.colOffset {
 		m.colOffset = m.colCursor
 	} else if m.colCursor >= m.colOffset+visibleCols {
 		m.colOffset = m.colCursor - visibleCols + 1
 	}
-	m.updateVisibleColumns()
+
+	// Only rebuild columns if offset changed, otherwise just update marker
+	if m.colOffset != prevOffset {
+		m.updateVisibleColumns()
+	} else {
+		m.updateCellMarker()
+	}
 }
