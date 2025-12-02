@@ -48,6 +48,3 @@ changelog:
   filters:
     exclude:
       - '^chore(\(.+\))?:'
-
-release:
-  draft: true

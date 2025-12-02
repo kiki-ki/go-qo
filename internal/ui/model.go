@@ -18,24 +18,31 @@ type Result struct {
 
 // Model represents the UI application state.
 type Model struct {
-	db         *sql.DB
-	mode       Mode
-	table      table.Model
-	textInput  textinput.Model
-	err        error
-	width      int
-	height     int
-	colCursor  int // selected column index
-	colOffset  int // column scroll offset for display
-	allColumns []table.Column
-	allRows    []table.Row
-	result     *Result // set when exiting with a query to execute
-	tableNames []string
+	db            *sql.DB
+	mode          Mode
+	table         table.Model
+	textInput     textinput.Model
+	err           error
+	width         int
+	height        int
+	colCursor     int // selected column index
+	colOffset     int // column scroll offset for display
+	allColumns    []table.Column
+	allRows       []table.Row
+	result        *Result // set when exiting with a query to execute
+	tableNames    []string
+	pendingQuery  string // query waiting for debounce
+	lastExecQuery string // last executed query to avoid duplicate execution
 }
 
 // Result returns the final query result.
 func (m Model) Result() *Result {
 	return m.result
+}
+
+// PendingQuery returns the pending query for testing.
+func (m Model) PendingQuery() string {
+	return m.pendingQuery
 }
 
 // NewModel creates a new UI model.
@@ -44,11 +51,12 @@ func NewModel(db *sql.DB, tableNames []string) Model {
 	t := newTable()
 
 	return Model{
-		db:         db,
-		mode:       ModeQuery,
-		table:      t,
-		textInput:  ti,
-		tableNames: tableNames,
+		db:           db,
+		mode:         ModeQuery,
+		table:        t,
+		textInput:    ti,
+		tableNames:   tableNames,
+		pendingQuery: ti.Value(),
 	}
 }
 
@@ -95,34 +103,53 @@ func newTable() table.Model {
 
 // Init implements tea.Model.
 func (m Model) Init() tea.Cmd {
-	return textinput.Blink
+	return tea.Batch(
+		textinput.Blink,
+		func() tea.Msg {
+			return NewDebounceMsg(m.textInput.Value())
+		},
+	)
 }
 
 // Update implements tea.Model.
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	var cmd tea.Cmd
 	var cmds []tea.Cmd
 
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.handleWindowResize(msg)
+	case debounceMsg:
+		m.handleDebounceMsg(msg)
 	case tea.KeyMsg:
-		c, quit := m.handleKeyMsg(msg)
-		if quit {
+		if cmd, quit := m.handleKeyMsg(msg); quit {
 			return m, tea.Quit
-		}
-		if c != nil {
-			cmds = append(cmds, c)
+		} else if cmd != nil {
+			cmds = append(cmds, cmd)
 		}
 	}
 
+	cmds = append(cmds, m.updateComponents(msg)...)
+
+	return m, tea.Batch(cmds...)
+}
+
+// updateComponents updates sub-components and handles state changes.
+func (m *Model) updateComponents(msg tea.Msg) []tea.Cmd {
+	var cmds []tea.Cmd
+
+	prevQuery := m.textInput.Value()
 	prevCursor := m.table.Cursor()
+
 	m.table, _ = m.table.Update(msg)
+
+	var cmd tea.Cmd
 	m.textInput, cmd = m.textInput.Update(msg)
 	cmds = append(cmds, cmd)
 
-	if m.mode == ModeQuery {
-		m.executeQuery()
+	// Schedule debounced query execution when input changes in query mode
+	if m.mode == ModeQuery && m.textInput.Value() != prevQuery {
+		m.pendingQuery = m.textInput.Value()
+		cmds = append(cmds, m.scheduleQueryExecution())
 	}
 
 	// Update cell marker when row cursor changes (lightweight, preserves viewport)
@@ -130,7 +157,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.updateCellMarker()
 	}
 
-	return m, tea.Batch(cmds...)
+	return cmds
 }
 
 // handleWindowResize updates dimensions on window resize.

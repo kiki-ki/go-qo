@@ -62,3 +62,9 @@ const (
 	initialColumnWidth = 20
 	defaultQueryLimit  = 10 // LIMIT value for default query
 )
+
+// Cell detail display settings.
+const (
+	cellDetailPadding  = 8  // total overhead: frame border/padding + safety margin
+	cellDetailMinWidth = 20 // minimum width for cell value display
+)
