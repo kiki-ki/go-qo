@@ -76,13 +76,11 @@ func (m Model) renderCellDetail() string {
 	pos := fmt.Sprintf("(%d/%d, %d/%d)", rowIdx+1, len(m.allRows), m.colCursor+1, len(m.allColumns))
 
 	// Calculate available width for value
-	// Frame: border (2) + padding (2) = 4
 	prefix := fmt.Sprintf(" %s %s: ", pos, colName)
 	prefixWidth := utf8.RuneCountInString(prefix)
-	// Total overhead: frame border/padding (4) + safety margin (4)
-	availableWidth := m.width - prefixWidth - 8
-	if availableWidth < 20 {
-		availableWidth = 20
+	availableWidth := m.width - prefixWidth - cellDetailPadding
+	if availableWidth < cellDetailMinWidth {
+		availableWidth = cellDetailMinWidth
 	}
 	truncatedValue := output.Truncate(value, availableWidth)
 

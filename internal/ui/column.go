@@ -4,35 +4,6 @@ import (
 	"github.com/charmbracelet/bubbles/table"
 )
 
-// executeQuery runs the current query and updates the table.
-func (m *Model) executeQuery() {
-	query := m.textInput.Value()
-	if query == "" {
-		return
-	}
-
-	rows, err := m.db.Query(query)
-	if err != nil {
-		m.err = err
-		return
-	}
-	defer func() { _ = rows.Close() }()
-
-	cols, tableRows, err := SQLRowsToTable(rows)
-	if err != nil {
-		m.err = err
-		return
-	}
-
-	m.allColumns = cols
-	m.allRows = tableRows
-	m.colCursor = 0
-	m.colOffset = 0
-	m.table.SetCursor(0)
-	m.updateVisibleColumns()
-	m.err = nil
-}
-
 // visibleColumnEndIndex returns the end index for visible columns.
 func (m *Model) visibleColumnEndIndex() int {
 	endIdx := m.colOffset + m.visibleColumnCount()

@@ -111,6 +111,12 @@ func TestModel_View_ErrorDisplay(t *testing.T) {
 	// Enter invalid SQL to trigger error
 	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("INVALID SQL")})
 
+	// Get model to access pending query
+	model := updated.(ui.Model)
+
+	// Trigger debounce to execute the query
+	updated, _ = updated.Update(ui.NewDebounceMsg(model.PendingQuery()))
+
 	view := updated.View()
 	if !strings.Contains(view, "Error") {
 		t.Error("expected error message in view for invalid SQL")
@@ -164,6 +170,12 @@ func TestModel_View_CellDetail(t *testing.T) {
 
 	// Trigger window resize to initialize dimensions (needed for query execution)
 	updated, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
+
+	// Get model to access pending query
+	model := updated.(ui.Model)
+
+	// Trigger debounce to execute the initial query
+	updated, _ = updated.Update(ui.NewDebounceMsg(model.PendingQuery()))
 
 	// Switch to table mode
 	updated, _ = updated.Update(tea.KeyMsg{Type: tea.KeyTab})
