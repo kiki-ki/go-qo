@@ -9,8 +9,8 @@
 > 1. Abbreviation for **"Query & Out"**.
 > 2. The peace of mind obtained by filtering data with SQL instead of complex syntax.
 
-**qo** is a minimalist TUI that lets you query JSON, CSV, and TSV files using SQL.  
-**Query** what you need, and get it **Out** to the pipeline.
+**qo** is a minimalist TUI that lets you query JSON, CSV, and TSV files using SQL.<br>
+**"Query"** what you need, and get it **"Out"** to the pipeline.
 
 ![qo demo](doc/demo/demo.gif)
 
@@ -72,7 +72,7 @@ Use SQL to analyze structured data.
 
 ```bash
 # Filter error logs
-cat app_json.log | qo -q "SELECT timestamp, message FROM tmp WHERE level = 'error'"
+cat app.log | qo -q "SELECT timestamp, message FROM tmp WHERE level = 'error'"
 
 # Aggregate sales by region
 qo -i csv sales.csv -o csv -q "SELECT region, SUM(amount) FROM sales GROUP BY region"
@@ -103,9 +103,37 @@ qo -i csv --no-header raw.csv -q "SELECT col1, col2 FROM raw"  # Headerless CSV
 | :--- | :--- | :--- |
 | `Tab` | ALL | Switch between Query/Table mode |
 | `Esc` / `Ctrl+C` | ALL | Quit (Output nothing) |
-| `Enter` | QUERY | **Output result to stdout** and Exit |
+| `Enter` | QUERY | Output result to stdout and Exit |
 | `↑` `↓` / `j` `k` | TABLE | Scroll rows |
 | `←` `→` / `h` `l` | TABLE | Scroll columns |
+
+## SQL Dialect
+
+**qo** uses **SQLite** as its SQL engine. All queries follow SQLite syntax and support its built-in functions.
+
+### Querying Nested JSON
+
+Use SQLite's `json_extract()` function to access nested fields in JSON data.
+
+```bash
+# Sample data: [{"user": {"name": "Alice", "age": 30}}, {"user": {"name": "Bob", "age": 25}}]
+
+# Extract nested fields
+qo data.json -q "SELECT json_extract(user, '$.name') AS name FROM data"
+# Filter by nested value
+qo data.json -q "SELECT * FROM data WHERE json_extract(user, '$.age') > 25"
+```
+
+For more details, see [SQLite JSON Functions](https://www.sqlite.org/json1.html).
+
+## Built With
+
+| Category | Library |
+| :--- | :--- |
+| TUI Framework | [Bubble Tea](https://github.com/charmbracelet/bubbletea) |
+| Styling | [Lip Gloss](https://github.com/charmbracelet/lipgloss) |
+| CLI | [Cobra](https://github.com/spf13/cobra) |
+| SQL Engine | [modernc.org/sqlite](https://pkg.go.dev/modernc.org/sqlite) (Pure Go, CGO-free) |
 
 ## License
 
