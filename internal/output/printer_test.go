@@ -17,52 +17,37 @@ func TestPrinter_PrintRows(t *testing.T) {
 	tests := []struct {
 		name   string
 		format output.Format
-		check  func(t *testing.T, out string)
+		want   string
 	}{
-		{
-			name:   "table format",
-			format: output.FormatTable,
-			check: func(t *testing.T, out string) {
-				if !strings.Contains(out, "Alice") || !strings.Contains(out, "Bob") {
-					t.Errorf("table output missing expected data: %s", out)
-				}
-			},
-		},
 		{
 			name:   "json format",
 			format: output.FormatJSON,
-			check: func(t *testing.T, out string) {
-				var result []map[string]any
-				if err := json.Unmarshal([]byte(out), &result); err != nil {
-					t.Fatalf("invalid JSON: %v", err)
-				}
-				if len(result) != 2 || result[0]["name"] != "Alice" {
-					t.Errorf("unexpected JSON output: %s", out)
-				}
-			},
+			want: `[
+  {
+    "id": 1,
+    "name": "Alice"
+  },
+  {
+    "id": 2,
+    "name": "Bob"
+  }
+]
+`,
+		},
+		{
+			name:   "jsonl format",
+			format: output.FormatJSONL,
+			want:   "{\"id\":1,\"name\":\"Alice\"}\n{\"id\":2,\"name\":\"Bob\"}\n",
 		},
 		{
 			name:   "csv format",
 			format: output.FormatCSV,
-			check: func(t *testing.T, out string) {
-				lines := strings.Split(strings.TrimSpace(out), "\n")
-				if len(lines) != 3 || lines[0] != "id,name" {
-					t.Errorf("unexpected CSV output: %s", out)
-				}
-			},
+			want:   "id,name\n1,Alice\n2,Bob\n",
 		},
 		{
 			name:   "tsv format",
 			format: output.FormatTSV,
-			check: func(t *testing.T, out string) {
-				lines := strings.Split(strings.TrimSpace(out), "\n")
-				if len(lines) != 3 || lines[0] != "id\tname" {
-					t.Errorf("unexpected TSV output: %s", out)
-				}
-				if !strings.Contains(lines[1], "\t") {
-					t.Errorf("TSV should use tab delimiter: %s", out)
-				}
-			},
+			want:   "id\tname\n1\tAlice\n2\tBob\n",
 		},
 	}
 
@@ -83,8 +68,36 @@ func TestPrinter_PrintRows(t *testing.T) {
 				t.Fatalf("PrintRows failed: %v", err)
 			}
 
-			tt.check(t, buf.String())
+			if got := buf.String(); got != tt.want {
+				t.Errorf("output mismatch:\ngot:  %q\nwant: %q", got, tt.want)
+			}
 		})
+	}
+}
+
+// table format is tested separately due to its unique output style.
+func TestPrinter_PrintRows_TableFormat(t *testing.T) {
+	db := testutil.SetupTestDB(t)
+
+	rows, err := db.Query("SELECT * FROM test ORDER BY id")
+	if err != nil {
+		t.Fatalf("query failed: %v", err)
+	}
+	testutil.CloseRows(t, rows)
+
+	var buf bytes.Buffer
+	p := output.NewPrinter(&output.Options{Format: output.FormatTable, Output: &buf})
+
+	if err := p.PrintRows(rows); err != nil {
+		t.Fatalf("PrintRows failed: %v", err)
+	}
+
+	out := buf.String()
+	if !strings.Contains(out, "Alice") || !strings.Contains(out, "Bob") {
+		t.Errorf("table output missing expected data: %s", out)
+	}
+	if !strings.Contains(out, "id") || !strings.Contains(out, "name") {
+		t.Errorf("table output missing headers: %s", out)
 	}
 }
 

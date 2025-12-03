@@ -19,7 +19,7 @@ func init() {
 
 // SupportedExtensions returns the file extensions this parser handles.
 func (p *JSONParser) SupportedExtensions() []string {
-	return []string{".json"}
+	return []string{".json", ".jsonl", ".ndjson"}
 }
 
 // Parse parses a JSON file into ParsedData.
@@ -31,14 +31,19 @@ func (p *JSONParser) Parse(path string) (*ParsedData, error) {
 	return p.ParseBytes(data)
 }
 
-// ParseBytes parses JSON from a byte slice.
+// ParseBytes parses JSON or JSON Lines from a byte slice.
 func (p *JSONParser) ParseBytes(data []byte) (*ParsedData, error) {
-	if !gjson.ValidBytes(data) {
-		return nil, fmt.Errorf("invalid JSON format")
-	}
+	var items []gjson.Result
+	var err error
 
-	result := gjson.ParseBytes(data)
-	items := p.extractItems(result)
+	if gjson.ValidBytes(data) {
+		items = p.parseJSON(data)
+	} else {
+		items, err = p.parseJSONLines(data)
+		if err != nil {
+			return nil, err
+		}
+	}
 
 	if len(items) == 0 {
 		return nil, fmt.Errorf("empty JSON data")
@@ -53,12 +58,28 @@ func (p *JSONParser) ParseBytes(data []byte) (*ParsedData, error) {
 	}, nil
 }
 
-// extractItems converts the JSON result to a slice of items.
-func (p *JSONParser) extractItems(result gjson.Result) []gjson.Result {
+// parseJSON parses standard JSON format.
+func (p *JSONParser) parseJSON(data []byte) []gjson.Result {
+	result := gjson.ParseBytes(data)
 	if result.IsArray() {
 		return result.Array()
 	}
 	return []gjson.Result{result}
+}
+
+// parseJSONLines parses JSON Lines format.
+func (p *JSONParser) parseJSONLines(data []byte) ([]gjson.Result, error) {
+	var items []gjson.Result
+	var parseErr error
+	gjson.ForEachLine(string(data), func(line gjson.Result) bool {
+		if !gjson.Valid(line.Raw) {
+			parseErr = fmt.Errorf("invalid JSON format")
+			return false
+		}
+		items = append(items, line)
+		return true
+	})
+	return items, parseErr
 }
 
 // extractColumns extracts column definitions from items.
