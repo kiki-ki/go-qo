@@ -152,10 +152,19 @@ func (p *Printer) printCSV(columns []string, data [][]any, delimiter rune) error
 	for _, row := range data {
 		record := make([]string, len(row))
 		for i, val := range row {
-			if val == nil {
+			switch v := val.(type) {
+			case nil:
 				record[i] = ""
-			} else {
-				record[i] = fmt.Sprintf("%v", val)
+			case map[string]any, []any:
+				// Convert nested objects/arrays back to JSON string
+				b, err := json.Marshal(v)
+				if err != nil {
+					record[i] = fmt.Sprintf("%v", v)
+				} else {
+					record[i] = string(b)
+				}
+			default:
+				record[i] = fmt.Sprintf("%v", v)
 			}
 		}
 		if err := w.Write(record); err != nil {

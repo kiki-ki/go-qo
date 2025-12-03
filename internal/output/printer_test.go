@@ -179,3 +179,75 @@ func TestPrinter_PrintRows_NoANSICodesWhenNotTTY(t *testing.T) {
 		t.Error("table output should not contain ANSI escape codes when output is not a TTY")
 	}
 }
+
+func TestPrinter_PrintRows_NestedJSON(t *testing.T) {
+	db, err := sql.Open("sqlite", ":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	testutil.CloseDB(t, db)
+
+	_, err = db.Exec(`
+		CREATE TABLE test (id INTEGER, meta TEXT);
+		INSERT INTO test VALUES (1, '{"name":"Alice","data":[1,2,3]}');
+	`)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tests := []struct {
+		name   string
+		format output.Format
+		want   string
+	}{
+		{
+			name:   "json format preserves nested object",
+			format: output.FormatJSON,
+			want: `[
+  {
+    "id": 1,
+    "meta": {
+      "data": [
+        1,
+        2,
+        3
+      ],
+      "name": "Alice"
+    }
+  }
+]
+`,
+		},
+		{
+			name:   "csv format outputs JSON string",
+			format: output.FormatCSV,
+			want:   "id,meta\n1,\"{\"\"data\"\":[1,2,3],\"\"name\"\":\"\"Alice\"\"}\"\n",
+		},
+		{
+			name:   "tsv format outputs JSON string",
+			format: output.FormatTSV,
+			want:   "id\tmeta\n1\t\"{\"\"data\"\":[1,2,3],\"\"name\"\":\"\"Alice\"\"}\"\n",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			rows, err := db.Query("SELECT * FROM test")
+			if err != nil {
+				t.Fatalf("query failed: %v", err)
+			}
+			testutil.CloseRows(t, rows)
+
+			var buf bytes.Buffer
+			p := output.NewPrinter(&output.Options{Format: tt.format, Output: &buf})
+
+			if err := p.PrintRows(rows); err != nil {
+				t.Fatalf("PrintRows failed: %v", err)
+			}
+
+			if got := buf.String(); got != tt.want {
+				t.Errorf("output mismatch:\ngot:  %q\nwant: %q", got, tt.want)
+			}
+		})
+	}
+}

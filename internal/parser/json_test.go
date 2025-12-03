@@ -80,6 +80,27 @@ func TestJSONParser_ParseBytes(t *testing.T) {
 			},
 		},
 		{
+			name:     "nested JSON is compacted",
+			input:    "[{\"id\": 1, \"meta\": {\n  \"key\": \"value\"\n}}]",
+			wantRows: 1,
+			wantCols: 2,
+			checkValues: func(t *testing.T, data *parser.ParsedData) {
+				for i, col := range data.Columns {
+					if col.Name == "meta" {
+						got, ok := data.Rows[0][i].(string)
+						if !ok {
+							t.Errorf("expected string, got %T", data.Rows[0][i])
+							return
+						}
+						want := `{"key":"value"}`
+						if got != want {
+							t.Errorf("nested JSON not compacted: got %q, want %q", got, want)
+						}
+					}
+				}
+			},
+		},
+		{
 			name:     "type widening int to real",
 			input:    `[{"value": 1}, {"value": 2.5}]`,
 			wantRows: 2,

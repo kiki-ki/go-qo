@@ -95,6 +95,33 @@ func TestNormalizeValue(t *testing.T) {
 	}
 }
 
+func TestNormalizeValue_JSONParsing(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    any
+		wantType string
+	}{
+		{"JSON object string", `{"name":"Alice"}`, "map"},
+		{"JSON array string", `["a","b"]`, "slice"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := output.NormalizeValue(tt.input)
+			switch tt.wantType {
+			case "map":
+				if _, ok := got.(map[string]any); !ok {
+					t.Errorf("expected map[string]any, got %T", got)
+				}
+			case "slice":
+				if _, ok := got.([]any); !ok {
+					t.Errorf("expected []any, got %T", got)
+				}
+			}
+		})
+	}
+}
+
 func TestTruncate(t *testing.T) {
 	tests := []struct {
 		name   string
