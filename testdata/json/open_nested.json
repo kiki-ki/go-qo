@@ -1,0 +1,20 @@
+[
+  {
+    "id": 1,
+    "user": {"name": "Alice", "role": "admin"},
+    "tags": [
+      "go",
+      "sql"
+    ]
+  },
+  {
+    "id": 2,
+    "user": {
+      "name": "Bob",
+      "role": "user"
+    },
+    "tags": [
+      "python"
+    ]
+  }
+]
