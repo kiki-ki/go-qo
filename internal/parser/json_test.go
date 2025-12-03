@@ -129,6 +129,38 @@ func TestJSONParser_ParseBytes(t *testing.T) {
 			},
 		},
 		{
+			name:     "JSON Lines format",
+			input:    "{\"id\":1,\"name\":\"Alice\"}\n{\"id\":2,\"name\":\"Bob\"}\n",
+			wantRows: 2,
+			wantCols: 2,
+			checkValues: func(t *testing.T, data *parser.ParsedData) {
+				if data.Rows[0][1] != "Alice" {
+					t.Errorf("expected Alice, got %v", data.Rows[0][1])
+				}
+				if data.Rows[1][1] != "Bob" {
+					t.Errorf("expected Bob, got %v", data.Rows[1][1])
+				}
+			},
+		},
+		{
+			name:     "JSON Lines with nested objects",
+			input:    "{\"id\":1,\"meta\":{\"key\":\"value\"}}\n{\"id\":2,\"meta\":{\"key\":\"other\"}}\n",
+			wantRows: 2,
+			wantCols: 2,
+			checkValues: func(t *testing.T, data *parser.ParsedData) {
+				for i, col := range data.Columns {
+					if col.Name == "meta" && col.Type != parser.TypeJSON {
+						t.Errorf("expected JSON type for meta")
+					}
+					if col.Name == "meta" {
+						if data.Rows[0][i] != `{"key":"value"}` {
+							t.Errorf("expected nested JSON, got %v", data.Rows[0][i])
+						}
+					}
+				}
+			},
+		},
+		{
 			name:    "invalid JSON",
 			input:   `{invalid}`,
 			wantErr: true,

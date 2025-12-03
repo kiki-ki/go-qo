@@ -1,0 +1,3 @@
+{"id":1,"name":"Alice","score":95.5,"active":true,"meta":{"role":"admin"}}
+{"id":2,"name":"Bob","score":82.0,"active":false,"tags":["go","rust"]}
+{"id":3,"score":77.3,"active":true,"meta":null}
