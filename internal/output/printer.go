@@ -54,6 +54,8 @@ func (p *Printer) PrintRows(rows *sql.Rows) error {
 	switch p.opts.Format {
 	case FormatJSON:
 		return p.printJSON(columns, data)
+	case FormatJSONL:
+		return p.printJSONL(columns, data)
 	case FormatCSV:
 		return p.printCSV(columns, data, ',')
 	case FormatTSV:
@@ -122,21 +124,36 @@ func (p *Printer) printTable(columns []string, data [][]any) error {
 	return nil
 }
 
+// rowToMap converts a row to a map with column names as keys.
+func (p *Printer) rowToMap(columns []string, row []any) map[string]any {
+	obj := make(map[string]any)
+	for j, col := range columns {
+		obj[col] = row[j]
+	}
+	return obj
+}
+
 // Print result formatted as a JSON.
 func (p *Printer) printJSON(columns []string, data [][]any) error {
 	result := make([]map[string]any, len(data))
-
 	for i, row := range data {
-		obj := make(map[string]any)
-		for j, col := range columns {
-			obj[col] = row[j]
-		}
-		result[i] = obj
+		result[i] = p.rowToMap(columns, row)
 	}
 
 	encoder := json.NewEncoder(p.opts.Output)
 	encoder.SetIndent("", "  ")
 	return encoder.Encode(result)
+}
+
+// Print result formatted as JSON Lines (one JSON object per line).
+func (p *Printer) printJSONL(columns []string, data [][]any) error {
+	encoder := json.NewEncoder(p.opts.Output)
+	for _, row := range data {
+		if err := encoder.Encode(p.rowToMap(columns, row)); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // Print result formatted as a CSV (or TSV with tab delimiter).
