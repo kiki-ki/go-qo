@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+
+	"github.com/tidwall/gjson"
 )
 
 var multiSpaceRegex = regexp.MustCompile(`\s{2,}`)
@@ -19,7 +21,16 @@ func NormalizeValue(val any) any {
 
 	switch v := val.(type) {
 	case []byte:
-		return string(v)
+		s := string(v)
+		if parsed := tryParseJSON(s); parsed != nil {
+			return parsed
+		}
+		return s
+	case string:
+		if parsed := tryParseJSON(v); parsed != nil {
+			return parsed
+		}
+		return v
 	case float64:
 		if float64(int64(v)) == v {
 			return int64(v)
@@ -28,6 +39,16 @@ func NormalizeValue(val any) any {
 	default:
 		return v
 	}
+}
+
+// tryParseJSON attempts to parse a string as a JSON object or array.
+// Returns nil if the string is not valid JSON or is a primitive value.
+func tryParseJSON(s string) any {
+	result := gjson.Parse(s)
+	if result.IsObject() || result.IsArray() {
+		return result.Value()
+	}
+	return nil
 }
 
 // FormatValueForDisplay converts a database value to string for CLI table display.

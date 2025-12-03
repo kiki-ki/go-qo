@@ -1,6 +1,8 @@
 package parser
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"os"
 
@@ -157,7 +159,12 @@ func (p *JSONParser) extractValue(val gjson.Result) any {
 	case gjson.Null:
 		return nil
 	case gjson.JSON:
-		return val.Raw
+		// Compact the JSON to remove unnecessary whitespace and newlines
+		var buf bytes.Buffer
+		if err := json.Compact(&buf, []byte(val.Raw)); err != nil {
+			return val.Raw
+		}
+		return buf.String()
 	default:
 		return val.String()
 	}
