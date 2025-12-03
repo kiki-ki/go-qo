@@ -30,7 +30,7 @@ uname_os() {
 uname_arch() {
   arch=$(uname -m)
   case $arch in
-    x86_64) arch="x86_64" ;;
+    x86_64) arch="amd64" ;;
     x86)    arch="i386" ;;
     i686)   arch="i386" ;;
     aarch64) arch="arm64" ;;
