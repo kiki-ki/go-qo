@@ -80,22 +80,23 @@ qo -i csv sales.csv -o csv -q "SELECT region, SUM(amount) FROM sales GROUP BY re
 
 ### Convert Formats
 
-Transform between JSON, CSV, and TSV.
+Transform between various formats.
 
 ```bash
 qo -o csv data.json -q "SELECT id, name FROM data"             # JSON → CSV
 qo -i csv -o json users.csv -q "SELECT * FROM users"           # CSV → JSON
+qo -o jsonl data.json -q "SELECT * FROM data"                  # JSON → JSON Lines
 qo -i csv --no-header raw.csv -q "SELECT col1, col2 FROM raw"  # Headerless CSV
 ```
 
 ## Options
 
-| Flag | Short | Description |
-| :--- | :--- | :--- |
-| `--input` | `-i` | Input format: `json` (default), `csv`, `tsv` |
-| `--output` | `-o` | Output format: `json` (default), `table`, `csv`, `tsv` |
-| `--query` | `-q` | Run SQL query directly (Skip TUI) |
-| `--no-header` | | Treat first row as data, not header (CSV/TSV only) |
+| Flag | Short | Default | Description |
+| :--- | :--- | :--- | :--- |
+| `--input` | `-i` | json | Input format: json, csv, tsv ("json" includes "jsonl") |
+| `--output` | `-o` | json | Output format: json, jsonl, csv, tsv, table |
+| `--query` | `-q` | | Run SQL query directly (Skip TUI) |
+| `--no-header` | | | Treat first row as data, not header (CSV/TSV only) |
 
 ## UI Controls
 
