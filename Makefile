@@ -49,6 +49,10 @@ install-tool: ## install development tools
 releaser-check: ## run goreleaser check
 	go tool goreleaser check
 
+.PHONY: releaser-dryrun
+releaser-dryrun: ## run goreleaser dry-run
+	go tool goreleaser release --snapshot --clean
+
 .PHONY: doc
 doc: ## open godoc in browser
 	go tool godoc & (sleep 1 && open http://localhost:6060/pkg/github.com/kiki-ki/go-qo/)
