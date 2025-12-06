@@ -56,7 +56,7 @@ jobs:
   status-check:
     runs-on: ubuntu-latest
     if: always()
-    needs: [test, check, goreleaser-check]
+    needs: [test, check, check-releaser]
     steps:
       - run: |
           if [[ ${{ contains(needs.*.result, 'failure') }} == 'true' || ${{ contains(needs.*.result, 'cancelled') }} == 'true' ]]; then
