@@ -1,6 +1,7 @@
 package output
 
 import (
+	"encoding/json"
 	"fmt"
 	"regexp"
 	"strings"
@@ -73,6 +74,12 @@ func FormatValueRaw(val any) string {
 			s = fmt.Sprintf("%d", int64(v))
 		} else {
 			s = fmt.Sprintf("%g", v)
+		}
+	case map[string]any, []any:
+		if b, err := json.Marshal(v); err == nil {
+			s = string(b)
+		} else {
+			s = fmt.Sprintf("%v", v)
 		}
 	default:
 		s = fmt.Sprintf("%v", v)
