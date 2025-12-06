@@ -13,6 +13,13 @@ import (
 
 func TestRun(t *testing.T) {
 	db := testutil.SetupTestDB(t)
+	_, err := db.Exec(`
+		CREATE TABLE test (id INTEGER, name TEXT);
+		INSERT INTO test VALUES (1, 'Alice'), (2, 'Bob');
+	`)
+	if err != nil {
+		t.Fatalf("failed to setup test data: %v", err)
+	}
 
 	tests := []struct {
 		name   string
@@ -76,9 +83,16 @@ func TestRun(t *testing.T) {
 
 func TestRun_DefaultOptions(t *testing.T) {
 	db := testutil.SetupTestDB(t)
+	_, err := db.Exec(`
+		CREATE TABLE test (id INTEGER, name TEXT);
+		INSERT INTO test VALUES (1, 'Alice'), (2, 'Bob');
+	`)
+	if err != nil {
+		t.Fatalf("failed to setup test data: %v", err)
+	}
 
 	// Run with nil options should not panic
-	err := cli.Run(db, "SELECT * FROM test", nil)
+	err = cli.Run(db, "SELECT * FROM test", nil)
 	if err != nil {
 		t.Fatalf("Run with nil options failed: %v", err)
 	}
@@ -86,9 +100,16 @@ func TestRun_DefaultOptions(t *testing.T) {
 
 func TestRun_InvalidQuery(t *testing.T) {
 	db := testutil.SetupTestDB(t)
+	_, err := db.Exec(`
+		CREATE TABLE test (id INTEGER, name TEXT);
+		INSERT INTO test VALUES (1, 'Alice'), (2, 'Bob');
+	`)
+	if err != nil {
+		t.Fatalf("failed to setup test data: %v", err)
+	}
 
 	var buf bytes.Buffer
-	err := cli.Run(db, "INVALID SQL", &cli.Options{Output: &buf})
+	err = cli.Run(db, "INVALID SQL", &cli.Options{Output: &buf})
 	if err == nil {
 		t.Error("expected error for invalid query")
 	}

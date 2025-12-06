@@ -54,6 +54,13 @@ func TestPrinter_PrintRows(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			db := testutil.SetupTestDB(t)
+			_, err := db.Exec(`
+				CREATE TABLE test (id INTEGER, name TEXT);
+				INSERT INTO test VALUES (1, 'Alice'), (2, 'Bob');
+			`)
+			if err != nil {
+				t.Fatalf("failed to setup test data: %v", err)
+			}
 
 			rows, err := db.Query("SELECT * FROM test ORDER BY id")
 			if err != nil {
@@ -78,6 +85,13 @@ func TestPrinter_PrintRows(t *testing.T) {
 // table format is tested separately due to its unique output style.
 func TestPrinter_PrintRows_TableFormat(t *testing.T) {
 	db := testutil.SetupTestDB(t)
+	_, err := db.Exec(`
+		CREATE TABLE test (id INTEGER, name TEXT);
+		INSERT INTO test VALUES (1, 'Alice'), (2, 'Bob');
+	`)
+	if err != nil {
+		t.Fatalf("failed to setup test data: %v", err)
+	}
 
 	rows, err := db.Query("SELECT * FROM test ORDER BY id")
 	if err != nil {
@@ -102,13 +116,86 @@ func TestPrinter_PrintRows_TableFormat(t *testing.T) {
 }
 
 func TestPrinter_PrintRows_NullValues(t *testing.T) {
+	tests := []struct {
+		name   string
+		format output.Format
+		want   string
+	}{
+		{
+			name:   "json format outputs null",
+			format: output.FormatJSON,
+			want: `[
+  {
+    "id": 1,
+    "value": null
+  }
+]
+`,
+		},
+		{
+			name:   "jsonl format outputs null",
+			format: output.FormatJSONL,
+			want:   "{\"id\":1,\"value\":null}\n",
+		},
+		{
+			name:   "csv format outputs empty string",
+			format: output.FormatCSV,
+			want:   "id,value\n1,\n",
+		},
+		{
+			name:   "tsv format outputs empty string",
+			format: output.FormatTSV,
+			want:   "id\tvalue\n1\t\n",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			db, err := sql.Open("sqlite", ":memory:")
+			if err != nil {
+				t.Fatal(err)
+			}
+			testutil.CloseDB(t, db)
+
+			_, err = db.Exec(`
+				CREATE TABLE test (id INTEGER, value TEXT);
+				INSERT INTO test VALUES (1, NULL);
+			`)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			rows, err := db.Query("SELECT * FROM test")
+			if err != nil {
+				t.Fatal(err)
+			}
+			testutil.CloseRows(t, rows)
+
+			var buf bytes.Buffer
+			p := output.NewPrinter(&output.Options{Format: tt.format, Output: &buf})
+			if err := p.PrintRows(rows); err != nil {
+				t.Fatal(err)
+			}
+
+			if got := buf.String(); got != tt.want {
+				t.Errorf("output mismatch:\ngot:  %q\nwant: %q", got, tt.want)
+			}
+		})
+	}
+}
+
+// table format is tested separately due to lipgloss dependency.
+func TestPrinter_PrintRows_NullValues_TableFormat(t *testing.T) {
 	db, err := sql.Open("sqlite", ":memory:")
 	if err != nil {
 		t.Fatal(err)
 	}
 	testutil.CloseDB(t, db)
 
-	_, err = db.Exec(`CREATE TABLE test (id INTEGER, value TEXT); INSERT INTO test VALUES (1, NULL);`)
+	_, err = db.Exec(`
+		CREATE TABLE test (id INTEGER, value TEXT);
+		INSERT INTO test VALUES (1, NULL);
+	`)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -125,8 +212,9 @@ func TestPrinter_PrintRows_NullValues(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if !strings.Contains(buf.String(), "NULL") {
-		t.Error("NULL values should be displayed as 'NULL'")
+	out := buf.String()
+	if !strings.Contains(out, "(NULL)") {
+		t.Errorf("table output should contain '(NULL)' for null values: %s", out)
 	}
 }
 
@@ -172,6 +260,13 @@ func TestNewPrinter_DefaultOptions(t *testing.T) {
 
 func TestPrinter_PrintRows_NoANSICodesWhenNotTTY(t *testing.T) {
 	db := testutil.SetupTestDB(t)
+	_, err := db.Exec(`
+		CREATE TABLE test (id INTEGER, name TEXT);
+		INSERT INTO test VALUES (1, 'Alice'), (2, 'Bob');
+	`)
+	if err != nil {
+		t.Fatalf("failed to setup test data: %v", err)
+	}
 
 	rows, err := db.Query("SELECT * FROM test ORDER BY id")
 	if err != nil {

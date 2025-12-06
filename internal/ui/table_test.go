@@ -9,6 +9,13 @@ import (
 
 func TestSQLRowsToTable(t *testing.T) {
 	db := testutil.SetupTestDB(t)
+	_, err := db.Exec(`
+	CREATE TABLE test (id INTEGER, name TEXT);
+	INSERT INTO test VALUES (1, 'Alice'), (2, 'Bob');
+`)
+	if err != nil {
+		t.Fatalf("failed to setup test data: %v", err)
+	}
 
 	rows, err := db.Query("SELECT * FROM test ORDER BY id")
 	if err != nil {
@@ -46,6 +53,13 @@ func TestSQLRowsToTable(t *testing.T) {
 
 func TestSQLRowsToTable_EmptyResult(t *testing.T) {
 	db := testutil.SetupTestDB(t)
+	_, err := db.Exec(`
+	CREATE TABLE test (id INTEGER, name TEXT);
+	INSERT INTO test VALUES (1, 'Alice'), (2, 'Bob');
+`)
+	if err != nil {
+		t.Fatalf("failed to setup test data: %v", err)
+	}
 
 	rows, err := db.Query("SELECT * FROM test WHERE id = 999")
 	if err != nil {
