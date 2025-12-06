@@ -12,26 +12,14 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-// SetupTestDB creates an in-memory SQLite database with test data.
-// The database is automatically closed when the test completes.
+// SetupTestDB creates an in-memory SQLite database.
 func SetupTestDB(t *testing.T) *sql.DB {
 	t.Helper()
 	db, err := sql.Open("sqlite", ":memory:")
 	if err != nil {
 		t.Fatalf("failed to open db: %v", err)
 	}
-	t.Cleanup(func() {
-		if err := db.Close(); err != nil {
-			t.Errorf("failed to close db: %v", err)
-		}
-	})
-	_, err = db.Exec(`
-		CREATE TABLE test (id INTEGER, name TEXT);
-		INSERT INTO test VALUES (1, 'Alice'), (2, 'Bob');
-	`)
-	if err != nil {
-		t.Fatalf("failed to setup test data: %v", err)
-	}
+	CloseDB(t, db)
 	return db
 }
 
@@ -58,8 +46,6 @@ func JSONTestdataPath(filename string) string {
 }
 
 // CloseDB registers a cleanup function to close the database when the test completes.
-// Use this for databases not created by SetupTestDB.
-// Works with both *sql.DB and *db.DB (or any io.Closer).
 func CloseDB(t *testing.T, c io.Closer) {
 	t.Helper()
 	t.Cleanup(func() {

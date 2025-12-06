@@ -12,6 +12,13 @@ import (
 
 func TestNewModel(t *testing.T) {
 	db := testutil.SetupTestDB(t)
+	_, err := db.Exec(`
+	CREATE TABLE test (id INTEGER, name TEXT);
+	INSERT INTO test VALUES (1, 'Alice'), (2, 'Bob');
+`)
+	if err != nil {
+		t.Fatalf("failed to setup test data: %v", err)
+	}
 
 	m := ui.NewModel(db, []string{"test_table"})
 
@@ -24,6 +31,13 @@ func TestNewModel(t *testing.T) {
 
 func TestModel_View(t *testing.T) {
 	db := testutil.SetupTestDB(t)
+	_, err := db.Exec(`
+	CREATE TABLE test (id INTEGER, name TEXT);
+	INSERT INTO test VALUES (1, 'Alice'), (2, 'Bob');
+`)
+	if err != nil {
+		t.Fatalf("failed to setup test data: %v", err)
+	}
 
 	m := ui.NewModel(db, []string{"test_table"})
 	view := m.View()
@@ -39,6 +53,13 @@ func TestModel_View(t *testing.T) {
 
 func TestModel_Update_Quit(t *testing.T) {
 	db := testutil.SetupTestDB(t)
+	_, err := db.Exec(`
+	CREATE TABLE test (id INTEGER, name TEXT);
+	INSERT INTO test VALUES (1, 'Alice'), (2, 'Bob');
+`)
+	if err != nil {
+		t.Fatalf("failed to setup test data: %v", err)
+	}
 
 	m := ui.NewModel(db, []string{"test_table"})
 
@@ -64,6 +85,13 @@ func TestModel_Update_Quit(t *testing.T) {
 
 func TestModel_Update_TabTogglesFocus(t *testing.T) {
 	db := testutil.SetupTestDB(t)
+	_, err := db.Exec(`
+	CREATE TABLE test (id INTEGER, name TEXT);
+	INSERT INTO test VALUES (1, 'Alice'), (2, 'Bob');
+`)
+	if err != nil {
+		t.Fatalf("failed to setup test data: %v", err)
+	}
 
 	m := ui.NewModel(db, []string{"test_table"})
 
@@ -79,6 +107,13 @@ func TestModel_Update_TabTogglesFocus(t *testing.T) {
 
 func TestModel_Init(t *testing.T) {
 	db := testutil.SetupTestDB(t)
+	_, err := db.Exec(`
+	CREATE TABLE test (id INTEGER, name TEXT);
+	INSERT INTO test VALUES (1, 'Alice'), (2, 'Bob');
+`)
+	if err != nil {
+		t.Fatalf("failed to setup test data: %v", err)
+	}
 
 	m := ui.NewModel(db, []string{"test_table"})
 	cmd := m.Init()
@@ -91,6 +126,13 @@ func TestModel_Init(t *testing.T) {
 
 func TestModel_View_TableMode(t *testing.T) {
 	db := testutil.SetupTestDB(t)
+	_, err := db.Exec(`
+	CREATE TABLE test (id INTEGER, name TEXT);
+	INSERT INTO test VALUES (1, 'Alice'), (2, 'Bob');
+`)
+	if err != nil {
+		t.Fatalf("failed to setup test data: %v", err)
+	}
 
 	m := ui.NewModel(db, []string{"test"})
 
@@ -105,6 +147,13 @@ func TestModel_View_TableMode(t *testing.T) {
 
 func TestModel_View_ErrorDisplay(t *testing.T) {
 	db := testutil.SetupTestDB(t)
+	_, err := db.Exec(`
+	CREATE TABLE test (id INTEGER, name TEXT);
+	INSERT INTO test VALUES (1, 'Alice'), (2, 'Bob');
+`)
+	if err != nil {
+		t.Fatalf("failed to setup test data: %v", err)
+	}
 
 	m := ui.NewModel(db, []string{"test"})
 
@@ -125,6 +174,13 @@ func TestModel_View_ErrorDisplay(t *testing.T) {
 
 func TestModel_Update_EnterReturnsResult(t *testing.T) {
 	db := testutil.SetupTestDB(t)
+	_, err := db.Exec(`
+	CREATE TABLE test (id INTEGER, name TEXT);
+	INSERT INTO test VALUES (1, 'Alice'), (2, 'Bob');
+`)
+	if err != nil {
+		t.Fatalf("failed to setup test data: %v", err)
+	}
 
 	m := ui.NewModel(db, []string{"test"})
 
@@ -139,6 +195,7 @@ func TestModel_Update_EnterReturnsResult(t *testing.T) {
 	result := model.Result()
 	if result == nil {
 		t.Fatal("expected non-nil result")
+		return
 	}
 	if !strings.Contains(result.Query, "SELECT") {
 		t.Errorf("expected query to contain SELECT, got %q", result.Query)
@@ -147,6 +204,13 @@ func TestModel_Update_EnterReturnsResult(t *testing.T) {
 
 func TestModel_View_TableList(t *testing.T) {
 	db := testutil.SetupTestDB(t)
+	_, err := db.Exec(`
+	CREATE TABLE test (id INTEGER, name TEXT);
+	INSERT INTO test VALUES (1, 'Alice'), (2, 'Bob');
+`)
+	if err != nil {
+		t.Fatalf("failed to setup test data: %v", err)
+	}
 
 	m := ui.NewModel(db, []string{"users", "orders"})
 	view := m.View()
@@ -165,6 +229,13 @@ func TestModel_View_TableList(t *testing.T) {
 
 func TestModel_View_CellDetail(t *testing.T) {
 	db := testutil.SetupTestDB(t)
+	_, err := db.Exec(`
+	CREATE TABLE test (id INTEGER, name TEXT);
+	INSERT INTO test VALUES (1, 'Alice'), (2, 'Bob');
+`)
+	if err != nil {
+		t.Fatalf("failed to setup test data: %v", err)
+	}
 
 	m := ui.NewModel(db, []string{"test"})
 
@@ -194,6 +265,13 @@ func TestModel_View_CellDetail(t *testing.T) {
 
 func TestModel_TableNavigation(t *testing.T) {
 	db := testutil.SetupTestDB(t)
+	_, err := db.Exec(`
+	CREATE TABLE test (id INTEGER, name TEXT);
+	INSERT INTO test VALUES (1, 'Alice'), (2, 'Bob');
+`)
+	if err != nil {
+		t.Fatalf("failed to setup test data: %v", err)
+	}
 
 	m := ui.NewModel(db, []string{"test"})
 
@@ -228,6 +306,13 @@ func TestModel_TableNavigation(t *testing.T) {
 
 func TestModel_ToggleMode_BackToQuery(t *testing.T) {
 	db := testutil.SetupTestDB(t)
+	_, err := db.Exec(`
+	CREATE TABLE test (id INTEGER, name TEXT);
+	INSERT INTO test VALUES (1, 'Alice'), (2, 'Bob');
+`)
+	if err != nil {
+		t.Fatalf("failed to setup test data: %v", err)
+	}
 
 	m := ui.NewModel(db, []string{"test"})
 
