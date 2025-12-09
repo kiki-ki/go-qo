@@ -1,4 +1,4 @@
-# VHS Demo for qo
+# VHS Demo for ../../bin/qo
 # Run: vhs demo.tape
 
 Output demo.gif
@@ -14,11 +14,11 @@ Set WindowBar Colorful
 Set BorderRadius 12
 Set Margin 20
 
-Type "cat users.json"
+Type "cat data/users.json"
 Enter
 Sleep 2.5s
 
-Type "cat users.json | qo"
+Type "cat data/users.json | ../../bin/qo"
 Enter
 Sleep 2s
 
@@ -39,7 +39,7 @@ Sleep 500ms
 Enter
 Sleep 2s
 
-Type "qo users.json orders.json"
+Type "../../bin/qo data/users.json data/orders.json"
 Enter
 Sleep 2s
 
@@ -62,6 +62,6 @@ Sleep 500ms
 Enter
 Sleep 2s
 
-Type "qo -o table -q 'SELECT name, age, city FROM users ORDER BY age DESC' users.json"
+Type "../../bin/qo -o table -q 'SELECT name, age, city FROM users ORDER BY age DESC' data/users.json"
 Enter
 Sleep 3s

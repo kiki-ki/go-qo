@@ -8,10 +8,9 @@ const cellMarker = "▶"
 // Color palette with adaptive colors for light/dark terminal themes.
 // Reference: https://www.ditig.com/256-colors-cheat-sheet
 var (
-	colorBase   = lipgloss.AdaptiveColor{Light: "0", Dark: "7"} // black/silver
-	colorMuted  = lipgloss.AdaptiveColor{Light: "8", Dark: "8"} // gray
-	colorError  = lipgloss.Color("9")                           // red
-	colorAccent = lipgloss.Color("13")                          // pink
+	colorBase   = lipgloss.AdaptiveColor{Light: "0", Dark: "15"} // black/white
+	colorError  = lipgloss.Color("9")                            // red
+	colorAccent = lipgloss.Color("13")                           // pink
 )
 
 // Styles
@@ -25,7 +24,7 @@ var (
 // initStyles initializes styles after the renderer is configured.
 func initStyles() {
 	styleTextBase = lipgloss.NewStyle().Foreground(colorBase)
-	styleTextMuted = lipgloss.NewStyle().Foreground(colorMuted)
+	styleTextMuted = lipgloss.NewStyle().Faint(true)
 	styleTextAccent = lipgloss.NewStyle().Foreground(colorAccent)
 	styleTextError = lipgloss.NewStyle().Foreground(colorError)
 }
