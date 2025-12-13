@@ -37,13 +37,4 @@ brews:
       bin.install "qo"
 
 changelog:
-  use: github
-  groups:
-    - title: "Features"
-      regexp: '^feat(\(.+\))?:'
-      order: 0
-    - title: "Bug Fixes"
-      regexp: '^fix(\(.+\))?:'
-      order: 1
-    - title: "Others"
-      order: 999
+  use: github-native
