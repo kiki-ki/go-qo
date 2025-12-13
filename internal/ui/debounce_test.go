@@ -70,12 +70,12 @@ func TestHandleDebounceMsg_SkipsDuplicateExecution(t *testing.T) {
 	m.lastExecQuery = query // Already executed
 
 	// Count should not change since it's a duplicate
-	initialRows := len(m.allRows)
+	initialRows := len(m.tableState.Rows())
 
 	m.handleDebounceMsg(debounceMsg{query: query})
 
 	// Verify no re-execution (rows unchanged from initial state)
-	if len(m.allRows) != initialRows {
+	if len(m.tableState.Rows()) != initialRows {
 		t.Error("duplicate query should not be re-executed")
 	}
 }
