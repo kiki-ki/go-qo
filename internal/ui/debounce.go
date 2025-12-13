@@ -48,17 +48,14 @@ func (m *Model) executeQuery() {
 	}
 	defer func() { _ = rows.Close() }()
 
-	cols, tableRows, err := SQLRowsToTable(rows)
+	cols, tableRows, err := SQLRowsToTableData(rows)
 	if err != nil {
 		m.err = err
 		return
 	}
 
-	m.allColumns = cols
-	m.allRows = tableRows
-	m.colCursor = 0
-	m.colOffset = 0
+	m.tableState.SetData(cols, tableRows)
 	m.table.SetCursor(0)
-	m.updateVisibleColumns()
+	m.syncTableView(true)
 	m.err = nil
 }

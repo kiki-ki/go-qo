@@ -54,26 +54,18 @@ func (m Model) renderHeader() string {
 
 // renderCellDetail returns the full content of the selected cell with position info.
 func (m Model) renderCellDetail() string {
-	if len(m.allRows) == 0 || len(m.allColumns) == 0 {
+	rowIdx := m.table.Cursor()
+	if rowIdx < 0 {
+		rowIdx = 0
+	}
+
+	colName, value, ok := m.tableState.SelectedCell(rowIdx)
+	if !ok {
 		return styleTextBase.Render("\n (no data)")
 	}
 
-	rowIdx := m.table.Cursor()
-	if rowIdx < 0 {
-		rowIdx = 0 // default to first row
-	}
-	if rowIdx >= len(m.allRows) {
-		return ""
-	}
-
-	row := m.allRows[rowIdx]
-	if m.colCursor >= len(row) {
-		return ""
-	}
-
-	colName := m.allColumns[m.colCursor].Title
-	value := row[m.colCursor]
-	pos := fmt.Sprintf("(%d/%d, %d/%d)", rowIdx+1, len(m.allRows), m.colCursor+1, len(m.allColumns))
+	row, totalRows, col, totalCols := m.tableState.Position(rowIdx)
+	pos := fmt.Sprintf("(%d/%d, %d/%d)", row, totalRows, col, totalCols)
 
 	// Calculate available width for value
 	prefix := fmt.Sprintf(" %s %s: ", pos, colName)
@@ -90,7 +82,7 @@ func (m Model) renderCellDetail() string {
 // renderError returns the error view. Always returns a line to prevent layout shift.
 func (m Model) renderError() string {
 	if m.err == nil {
-		return "\n" // empty line to maintain consistent height
+		return "\n"
 	}
 	return styleTextError.Render(fmt.Sprintf("\nError: %v", m.err))
 }

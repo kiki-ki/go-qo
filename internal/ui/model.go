@@ -18,21 +18,24 @@ type Result struct {
 
 // Model represents the UI application state.
 type Model struct {
-	db            *sql.DB
-	mode          Mode
-	table         table.Model
-	textInput     textinput.Model
-	err           error
-	width         int
-	height        int
-	colCursor     int // selected column index
-	colOffset     int // column scroll offset for display
-	allColumns    []table.Column
-	allRows       []table.Row
-	result        *Result // set when exiting with a query to execute
-	tableNames    []string
-	pendingQuery  string // query waiting for debounce
-	lastExecQuery string // last executed query to avoid duplicate execution
+	db         *sql.DB
+	mode       Mode
+	table      table.Model
+	textInput  textinput.Model
+	err        error
+	width      int
+	height     int
+	tableNames []string
+
+	// Table data state
+	tableState *TableState
+
+	// Debounce state
+	pendingQuery  string
+	lastExecQuery string
+
+	// Result when exiting
+	result *Result
 }
 
 // Result returns the final query result.
@@ -55,6 +58,7 @@ func NewModel(db *sql.DB, tableNames []string) Model {
 		mode:         ModeQuery,
 		table:        t,
 		textInput:    ti,
+		tableState:   NewTableState(),
 		tableNames:   tableNames,
 		pendingQuery: ti.Value(),
 	}
@@ -154,7 +158,7 @@ func (m *Model) updateComponents(msg tea.Msg) []tea.Cmd {
 
 	// Update cell marker when row cursor changes (lightweight, preserves viewport)
 	if m.mode == ModeTable && m.table.Cursor() != prevCursor {
-		m.updateCellMarker()
+		m.syncTableView(false)
 	}
 
 	return cmds
@@ -166,11 +170,131 @@ func (m *Model) handleWindowResize(msg tea.WindowSizeMsg) {
 	m.height = msg.Height
 	m.table.SetHeight(msg.Height - tableHeightOffset)
 	m.textInput.Width = msg.Width - inputWidthOffset
-	m.updateVisibleColumns()
+	m.syncTableView(true)
+}
+
+// handleKeyMsg processes key events and returns a command and quit flag.
+func (m *Model) handleKeyMsg(msg tea.KeyMsg) (tea.Cmd, bool) {
+	switch msg.Type {
+	case tea.KeyCtrlC, tea.KeyEsc:
+		return nil, true
+
+	case tea.KeyEnter:
+		if m.mode == ModeQuery && m.textInput.Value() != "" {
+			m.result = &Result{Query: m.textInput.Value()}
+			return nil, true
+		}
+
+	case tea.KeyTab:
+		return m.toggleMode(), false
+
+	case tea.KeyLeft, tea.KeyRight, tea.KeyRunes:
+		if m.mode == ModeTable {
+			m.handleTableNavigation(msg)
+		}
+	}
+	return nil, false
+}
+
+// toggleMode switches between Query and Table modes.
+func (m *Model) toggleMode() tea.Cmd {
+	if m.mode == ModeQuery {
+		m.mode = ModeTable
+		m.textInput.Blur()
+		m.table.Focus()
+		return nil
+	}
+	m.mode = ModeQuery
+	m.table.Blur()
+	m.textInput.Focus()
+	return textinput.Blink
+}
+
+// handleTableNavigation handles column cursor movement in table mode.
+func (m *Model) handleTableNavigation(msg tea.KeyMsg) {
+	moveLeft := msg.Type == tea.KeyLeft || msg.String() == "h"
+	moveRight := msg.Type == tea.KeyRight || msg.String() == "l"
+
+	var moved bool
+	if moveLeft {
+		moved = m.tableState.MoveLeft()
+	} else if moveRight {
+		moved = m.tableState.MoveRight()
+	}
+
+	if !moved {
+		return
+	}
+
+	// Adjust offset and sync view
+	offsetChanged := m.tableState.AdjustOffset(m.visibleColumnCount())
+	m.syncTableView(offsetChanged)
+}
+
+// syncTableView updates the bubbles table with current state.
+// If rebuildColumns is true, rebuilds both columns and rows (heavier).
+// If false, only updates rows with cell marker (lighter).
+func (m *Model) syncTableView(rebuildColumns bool) {
+	if len(m.tableState.Columns()) == 0 {
+		return
+	}
+
+	visibleCols := m.visibleColumnCount()
+	start, end := m.tableState.VisibleColumnRange(visibleCols)
+	actualCols := end - start // actual number of columns to display
+	colWidth := m.calculateColumnWidth(actualCols)
+	cursor := m.table.Cursor()
+
+	if rebuildColumns {
+		cols := m.tableState.BuildVisibleColumns(visibleCols, colWidth)
+		m.table.SetRows([]table.Row{})
+		m.table.SetColumns(cols)
+	}
+
+	rows := m.tableState.BuildVisibleRows(cursor, visibleCols)
+	m.table.SetRows(rows)
+
+	if rebuildColumns {
+		// Restore cursor by moving from top (SetCursor alone doesn't update viewport)
+		m.table.GotoTop()
+		for i := 0; i < cursor; i++ {
+			m.table.MoveDown(1)
+		}
+	}
+}
+
+// visibleColumnCount returns the number of columns that can fit in the view.
+func (m *Model) visibleColumnCount() int {
+	if m.width == 0 {
+		return maxVisibleCols
+	}
+	count := (m.width - framePadding) / (defaultColumnWidth + columnBorderWidth)
+	if count < 1 {
+		return 1
+	}
+	if count > maxVisibleCols {
+		return maxVisibleCols
+	}
+	return count
+}
+
+// calculateColumnWidth returns the optimal column width based on terminal width.
+func (m *Model) calculateColumnWidth(numCols int) int {
+	if m.width == 0 || numCols == 0 {
+		return defaultColumnWidth
+	}
+	available := m.width - framePadding - (numCols * columnBorderWidth)
+	width := available / numCols
+	if width < minColumnWidth {
+		return minColumnWidth
+	}
+	if width > maxColumnWidth {
+		return maxColumnWidth
+	}
+	return width
 }
 
 // Run starts the UI application and returns the final query if any.
-// It uses /dev/tty for input/output so that stdin/stdout remain available for piping.
 func Run(db *sql.DB, tableNames []string) (*Result, error) {
 	tty, err := os.OpenFile("/dev/tty", os.O_RDWR, 0)
 	if err != nil {

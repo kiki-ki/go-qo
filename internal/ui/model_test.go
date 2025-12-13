@@ -1,6 +1,7 @@
 package ui_test
 
 import (
+	"database/sql"
 	"strings"
 	"testing"
 
@@ -10,160 +11,91 @@ import (
 	"github.com/kiki-ki/go-qo/internal/ui"
 )
 
-func TestNewModel(t *testing.T) {
+// setupTestTable creates a test database with a simple table.
+func setupTestTable(t *testing.T) *sql.DB {
+	t.Helper()
 	db := testutil.SetupTestDB(t)
 	_, err := db.Exec(`
-	CREATE TABLE test (id INTEGER, name TEXT);
-	INSERT INTO test VALUES (1, 'Alice'), (2, 'Bob');
-`)
+		CREATE TABLE test (id INTEGER, name TEXT);
+		INSERT INTO test VALUES (1, 'Alice'), (2, 'Bob');
+	`)
 	if err != nil {
 		t.Fatalf("failed to setup test data: %v", err)
 	}
-
-	m := ui.NewModel(db, []string{"test_table"})
-
-	// Verify initial state via View output
-	view := m.View()
-	if !strings.Contains(view, "QUERY") {
-		t.Error("expected QUERY mode in view")
-	}
+	return db
 }
 
-func TestModel_View(t *testing.T) {
-	db := testutil.SetupTestDB(t)
-	_, err := db.Exec(`
-	CREATE TABLE test (id INTEGER, name TEXT);
-	INSERT INTO test VALUES (1, 'Alice'), (2, 'Bob');
-`)
-	if err != nil {
-		t.Fatalf("failed to setup test data: %v", err)
-	}
-
-	m := ui.NewModel(db, []string{"test_table"})
+func TestNewModel(t *testing.T) {
+	db := setupTestTable(t)
+	m := ui.NewModel(db, []string{"test"})
 	view := m.View()
 
-	// Check view contains expected elements
 	if !strings.Contains(view, "QUERY") {
-		t.Error("expected 'QUERY' mode in view")
+		t.Error("expected QUERY mode in view")
 	}
 	if !strings.Contains(view, "Tab") {
 		t.Error("expected Tab hint in view")
 	}
-}
-
-func TestModel_Update_Quit(t *testing.T) {
-	db := testutil.SetupTestDB(t)
-	_, err := db.Exec(`
-	CREATE TABLE test (id INTEGER, name TEXT);
-	INSERT INTO test VALUES (1, 'Alice'), (2, 'Bob');
-`)
-	if err != nil {
-		t.Fatalf("failed to setup test data: %v", err)
-	}
-
-	m := ui.NewModel(db, []string{"test_table"})
-
-	// Test Ctrl+C quits
-	newModel, cmd := m.Update(tea.KeyMsg{Type: tea.KeyCtrlC})
-	if newModel == nil {
-		t.Error("expected non-nil model")
-	}
-	if cmd == nil {
-		t.Error("expected quit command")
-	}
-
-	// Test Esc quits
-	m = ui.NewModel(db, []string{"test_table"})
-	newModel, cmd = m.Update(tea.KeyMsg{Type: tea.KeyEsc})
-	if newModel == nil {
-		t.Error("expected non-nil model")
-	}
-	if cmd == nil {
-		t.Error("expected quit command")
+	if !strings.Contains(view, "SELECT * FROM test") {
+		t.Error("expected default query with first table name")
 	}
 }
 
-func TestModel_Update_TabTogglesFocus(t *testing.T) {
-	db := testutil.SetupTestDB(t)
-	_, err := db.Exec(`
-	CREATE TABLE test (id INTEGER, name TEXT);
-	INSERT INTO test VALUES (1, 'Alice'), (2, 'Bob');
-`)
-	if err != nil {
-		t.Fatalf("failed to setup test data: %v", err)
+func TestModel_Quit(t *testing.T) {
+	db := setupTestTable(t)
+
+	tests := []struct {
+		name    string
+		keyType tea.KeyType
+	}{
+		{"ctrl+c", tea.KeyCtrlC},
+		{"esc", tea.KeyEsc},
 	}
 
-	m := ui.NewModel(db, []string{"test_table"})
-
-	// Press Tab to toggle focus
-	newModel, _ := m.Update(tea.KeyMsg{Type: tea.KeyTab})
-
-	// The model should have updated (we can't check internal state directly
-	// in external test, but we verify no panic and model is returned)
-	if newModel == nil {
-		t.Error("expected non-nil model after Tab")
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m := ui.NewModel(db, []string{"test"})
+			_, cmd := m.Update(tea.KeyMsg{Type: tt.keyType})
+			if cmd == nil {
+				t.Errorf("expected quit command for %s", tt.name)
+			}
+		})
 	}
 }
 
 func TestModel_Init(t *testing.T) {
-	db := testutil.SetupTestDB(t)
-	_, err := db.Exec(`
-	CREATE TABLE test (id INTEGER, name TEXT);
-	INSERT INTO test VALUES (1, 'Alice'), (2, 'Bob');
-`)
-	if err != nil {
-		t.Fatalf("failed to setup test data: %v", err)
-	}
-
-	m := ui.NewModel(db, []string{"test_table"})
+	db := setupTestTable(t)
+	m := ui.NewModel(db, []string{"test"})
 	cmd := m.Init()
 
-	// Init should return a blink command for textinput
 	if cmd == nil {
-		t.Error("expected non-nil init command")
+		t.Error("expected non-nil init command (blink)")
 	}
 }
 
-func TestModel_View_TableMode(t *testing.T) {
-	db := testutil.SetupTestDB(t)
-	_, err := db.Exec(`
-	CREATE TABLE test (id INTEGER, name TEXT);
-	INSERT INTO test VALUES (1, 'Alice'), (2, 'Bob');
-`)
-	if err != nil {
-		t.Fatalf("failed to setup test data: %v", err)
+func TestModel_WindowResize(t *testing.T) {
+	db := setupTestTable(t)
+	m := ui.NewModel(db, []string{"test"})
+	updated, _ := m.Update(ui.NewDebounceMsg(m.PendingQuery()))
+
+	sizes := []tea.WindowSizeMsg{
+		{Width: 120, Height: 40},
+		{Width: 40, Height: 10},
+		{Width: 0, Height: 0},
 	}
 
-	m := ui.NewModel(db, []string{"test"})
-
-	// Switch to table mode
-	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyTab})
-
-	view := updated.View()
-	if !strings.Contains(view, "TABLE") {
-		t.Error("expected TABLE mode in view after Tab")
+	for _, size := range sizes {
+		updated, _ = updated.Update(size)
+		_ = updated.View()
 	}
 }
 
-func TestModel_View_ErrorDisplay(t *testing.T) {
-	db := testutil.SetupTestDB(t)
-	_, err := db.Exec(`
-	CREATE TABLE test (id INTEGER, name TEXT);
-	INSERT INTO test VALUES (1, 'Alice'), (2, 'Bob');
-`)
-	if err != nil {
-		t.Fatalf("failed to setup test data: %v", err)
-	}
-
+func TestModel_ErrorDisplay(t *testing.T) {
+	db := setupTestTable(t)
 	m := ui.NewModel(db, []string{"test"})
 
-	// Enter invalid SQL to trigger error
 	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("INVALID SQL")})
-
-	// Get model to access pending query
 	model := updated.(ui.Model)
-
-	// Trigger debounce to execute the query
 	updated, _ = updated.Update(ui.NewDebounceMsg(model.PendingQuery()))
 
 	view := updated.View()
@@ -172,158 +104,133 @@ func TestModel_View_ErrorDisplay(t *testing.T) {
 	}
 }
 
-func TestModel_Update_EnterReturnsResult(t *testing.T) {
-	db := testutil.SetupTestDB(t)
-	_, err := db.Exec(`
-	CREATE TABLE test (id INTEGER, name TEXT);
-	INSERT INTO test VALUES (1, 'Alice'), (2, 'Bob');
-`)
-	if err != nil {
-		t.Fatalf("failed to setup test data: %v", err)
+func TestModel_EnterReturnsResult(t *testing.T) {
+	db := setupTestTable(t)
+
+	tests := []struct {
+		name  string
+		input string
+		want  string
+	}{
+		{"default_query", "", "SELECT * FROM test LIMIT 10"},
+		{"custom_query", "SELECT name FROM test", "SELECT name FROM test"},
 	}
 
-	m := ui.NewModel(db, []string{"test"})
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m := ui.NewModel(db, []string{"test"})
+			var updated tea.Model = m
 
-	// Press Enter in query mode should quit with result
-	updated, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
-	if cmd == nil {
-		t.Error("expected quit command on Enter")
-	}
+			if tt.input != "" {
+				for range "SELECT * FROM test LIMIT 10" {
+					updated, _ = updated.Update(tea.KeyMsg{Type: tea.KeyBackspace})
+				}
+				updated, _ = updated.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(tt.input)})
+			}
 
-	// Verify result contains query
-	model := updated.(ui.Model)
-	result := model.Result()
-	if result == nil {
-		t.Fatal("expected non-nil result")
-		return
-	}
-	if !strings.Contains(result.Query, "SELECT") {
-		t.Errorf("expected query to contain SELECT, got %q", result.Query)
+			updated, cmd := updated.Update(tea.KeyMsg{Type: tea.KeyEnter})
+			if cmd == nil {
+				t.Fatal("expected quit command on Enter")
+			}
+
+			model := updated.(ui.Model)
+			result := model.Result()
+			if result == nil || result.Query != tt.want {
+				t.Errorf("got %v, want %q", result, tt.want)
+			}
+		})
 	}
 }
 
-func TestModel_View_TableList(t *testing.T) {
-	db := testutil.SetupTestDB(t)
-	_, err := db.Exec(`
-	CREATE TABLE test (id INTEGER, name TEXT);
-	INSERT INTO test VALUES (1, 'Alice'), (2, 'Bob');
-`)
-	if err != nil {
-		t.Fatalf("failed to setup test data: %v", err)
-	}
-
+func TestModel_TableList(t *testing.T) {
+	db := setupTestTable(t)
 	m := ui.NewModel(db, []string{"users", "orders"})
 	view := m.View()
 
-	// Check table list is displayed in query mode
 	if !strings.Contains(view, "Tables:") {
 		t.Error("expected 'Tables:' in view")
 	}
-	if !strings.Contains(view, "users") {
-		t.Error("expected 'users' in table list")
-	}
-	if !strings.Contains(view, "orders") {
-		t.Error("expected 'orders' in table list")
+	if !strings.Contains(view, "users, orders") {
+		t.Error("expected 'users, orders' in table list")
 	}
 }
 
-func TestModel_View_CellDetail(t *testing.T) {
-	db := testutil.SetupTestDB(t)
-	_, err := db.Exec(`
-	CREATE TABLE test (id INTEGER, name TEXT);
-	INSERT INTO test VALUES (1, 'Alice'), (2, 'Bob');
-`)
-	if err != nil {
-		t.Fatalf("failed to setup test data: %v", err)
-	}
-
+func TestModel_CellDetail(t *testing.T) {
+	db := setupTestTable(t)
 	m := ui.NewModel(db, []string{"test"})
 
-	// Trigger window resize to initialize dimensions (needed for query execution)
 	updated, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
-
-	// Get model to access pending query
 	model := updated.(ui.Model)
-
-	// Trigger debounce to execute the initial query
 	updated, _ = updated.Update(ui.NewDebounceMsg(model.PendingQuery()))
-
-	// Switch to table mode
 	updated, _ = updated.Update(tea.KeyMsg{Type: tea.KeyTab})
 	view := updated.View()
 
-	// In table mode, should show TABLE header
 	if !strings.Contains(view, "TABLE") {
 		t.Error("expected TABLE mode indicator")
 	}
-
-	// Should show data (Alice and Bob from test table)
-	if !strings.Contains(view, "Alice") {
-		t.Error("expected data to be displayed")
+	if !strings.Contains(view, "(1/2, 1/2)") {
+		t.Error("expected cell position in detail")
+	}
+	if !strings.Contains(view, "id:") {
+		t.Error("expected column name 'id' in cell detail")
 	}
 }
 
 func TestModel_TableNavigation(t *testing.T) {
-	db := testutil.SetupTestDB(t)
-	_, err := db.Exec(`
-	CREATE TABLE test (id INTEGER, name TEXT);
-	INSERT INTO test VALUES (1, 'Alice'), (2, 'Bob');
-`)
-	if err != nil {
-		t.Fatalf("failed to setup test data: %v", err)
-	}
-
+	db := setupTestTable(t)
 	m := ui.NewModel(db, []string{"test"})
 
-	// Initialize dimensions and execute query
 	updated, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
-
-	// Switch to table mode
+	model := updated.(ui.Model)
+	updated, _ = updated.Update(ui.NewDebounceMsg(model.PendingQuery()))
 	updated, _ = updated.Update(tea.KeyMsg{Type: tea.KeyTab})
 
-	// Navigate right with arrow key
-	updated, _ = updated.Update(tea.KeyMsg{Type: tea.KeyRight})
 	view := updated.View()
-	if !strings.Contains(view, "TABLE") {
-		t.Error("expected TABLE mode after right navigation")
+	if !strings.Contains(view, "(1/2, 1/2)") {
+		t.Error("expected initial position (1/2, 1/2)")
 	}
 
-	// Navigate left with arrow key
-	updated, _ = updated.Update(tea.KeyMsg{Type: tea.KeyLeft})
+	updated, _ = updated.Update(tea.KeyMsg{Type: tea.KeyRight})
 	view = updated.View()
-	if !strings.Contains(view, "TABLE") {
-		t.Error("expected TABLE mode after left navigation")
+	if !strings.Contains(view, "(1/2, 2/2)") {
+		t.Error("expected position (1/2, 2/2) after right")
+	}
+	if !strings.Contains(view, "name:") {
+		t.Error("expected column 'name' after right navigation")
 	}
 
-	// Navigate with vim keys (h/l)
-	updated, _ = updated.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("l")})
 	updated, _ = updated.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("h")})
 	view = updated.View()
-	if !strings.Contains(view, "TABLE") {
-		t.Error("expected TABLE mode after vim navigation")
+	if !strings.Contains(view, "(1/2, 1/2)") {
+		t.Error("expected position (1/2, 1/2) after h")
+	}
+	if !strings.Contains(view, "id:") {
+		t.Error("expected column 'id' after h navigation")
 	}
 }
 
-func TestModel_ToggleMode_BackToQuery(t *testing.T) {
-	db := testutil.SetupTestDB(t)
-	_, err := db.Exec(`
-	CREATE TABLE test (id INTEGER, name TEXT);
-	INSERT INTO test VALUES (1, 'Alice'), (2, 'Bob');
-`)
-	if err != nil {
-		t.Fatalf("failed to setup test data: %v", err)
-	}
-
+func TestModel_ToggleMode(t *testing.T) {
+	db := setupTestTable(t)
 	m := ui.NewModel(db, []string{"test"})
 
-	// Switch to table mode
-	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyTab})
-	view := updated.View()
-	if !strings.Contains(view, "TABLE") {
-		t.Error("expected TABLE mode")
+	view := m.View()
+	if !strings.Contains(view, "QUERY") {
+		t.Error("expected QUERY mode initially")
+	}
+	if !strings.Contains(view, "Tables:") {
+		t.Error("expected table list in QUERY mode")
 	}
 
-	// Switch back to query mode
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyTab})
+	view = updated.View()
+	if !strings.Contains(view, "TABLE") {
+		t.Error("expected TABLE mode after Tab")
+	}
+	if strings.Contains(view, "Tables:") {
+		t.Error("should not show table list in TABLE mode")
+	}
+
+	// Tab -> back to QUERY mode
 	updated, _ = updated.Update(tea.KeyMsg{Type: tea.KeyTab})
 	view = updated.View()
 	if !strings.Contains(view, "QUERY") {
