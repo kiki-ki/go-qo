@@ -8,16 +8,14 @@
 [![License](https://img.shields.io/github/license/kiki-ki/go-qo)](https://github.com/kiki-ki/go-qo/blob/main/LICENSE)
 [![Go Report](https://goreportcard.com/badge/github.com/kiki-ki/go-qo)](https://goreportcard.com/report/github.com/kiki-ki/go-qo)
 
+> qo [cue-oh] *noun.*
 
-> **qo** [cue-oh] *noun.*
->
-> 1. Abbreviation for **"Query & Out"**.
-> 2. The peace of mind obtained by filtering data with SQL instead of complex syntax.
+1. A minimalist TUI for querying JSON, CSV, and TSV using SQL.
+2. **"query"** what you need, and get it **"out"** to the pipeline.
 
-**qo** is a minimalist TUI that lets you query JSON, CSV, and TSV files using SQL.<br>
-**"Query"** what you need, and get it **"Out"** to the pipeline.
-
-![qo demo](doc/demo/demo.gif)
+<div align="center">
+  <img src="doc/demo/demo.gif" width="640" alt="qo demo: Querying JSON data with SQL in the TUI">
+</div>
 
 ## Why qo?
 
@@ -27,22 +25,25 @@
 
 ## Install
 
-### Homebrew (macOS/Linux)
+macOS and Linux (amd64/arm64) are supported.
+
+**Homebrew (Package)**
 
 ```bash
 brew install kiki-ki/tap/qo
 ```
 
-### Shell Script
+**Shell (Binary)**
 
 ```bash
 curl -sfL https://raw.githubusercontent.com/kiki-ki/go-qo/main/install.sh | sh
 ```
 
-### Go Install
+**Git (Source)**
 
 ```bash
-go install github.com/kiki-ki/go-qo/cmd/qo@latest
+# The binary will be located at ./bin/qo
+git clone --depth 1 https://github.com/kiki-ki/go-qo.git && cd go-qo && make build
 ```
 
 ## Usage
