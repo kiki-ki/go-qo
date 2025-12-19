@@ -1,4 +1,4 @@
-# VHS Demo for ../../bin/qo
+# VHS Demo for qo
 # Run: vhs demo.tape
 
 Output demo.gif
@@ -16,9 +16,10 @@ Set Margin 20
 
 Type "cat data/users.json"
 Enter
-Sleep 2.5s
+Sleep 1s
 
-Type "cat data/users.json | ../../bin/qo"
+Type "cat data/users.json | qo"
+Sleep 1s
 Enter
 Sleep 2s
 
@@ -39,7 +40,8 @@ Sleep 500ms
 Enter
 Sleep 2s
 
-Type "../../bin/qo data/users.json data/orders.json"
+Type "qo data/users.json data/orders.json"
+Sleep 1s
 Enter
 Sleep 2s
 
@@ -62,6 +64,7 @@ Sleep 500ms
 Enter
 Sleep 2s
 
-Type "../../bin/qo -o table -q 'SELECT name, age, city FROM users ORDER BY age DESC' data/users.json"
+Type "qo -o table -q 'SELECT name, age, city FROM users ORDER BY age DESC' data/users.json"
+Sleep 1s
 Enter
 Sleep 3s
