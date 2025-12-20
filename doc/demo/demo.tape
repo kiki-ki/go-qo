@@ -24,7 +24,11 @@ Enter
 Sleep 2s
 
 Ctrl+U
-Type "SELECT name, city FROM tmp WHERE age >= 30"
+Type "SELECT name, city"
+Sleep 1.0s
+Type " FROM tmp"
+Sleep 1.0s
+Type " WHERE age >= 30"
 Sleep 1.5s
 
 Tab
