@@ -40,6 +40,7 @@ var (
 	}
 	queryModeCommands = slices.Concat(baseModeCommands, []modeCommand{
 		{key: "Enter", message: "execute query"},
+		{key: "Ctrl+P", message: "pick columns"},
 	})
 	tableModeCommands = slices.Concat(baseModeCommands, []modeCommand{
 		{key: "jk", message: "rows"},
