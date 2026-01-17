@@ -103,7 +103,24 @@ func TestModel_ErrorDisplay(t *testing.T) {
 	}
 }
 
-func TestModel_EnterReturnsResult(t *testing.T) {
+func TestModel_EnterExecutesQuery(t *testing.T) {
+	db := setupTestTable(t)
+	m := ui.NewModel(db, []string{"test"})
+
+	// Enter executes query but stays in TUI (no quit command)
+	updated, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	if cmd != nil {
+		t.Fatal("Enter should not return quit command")
+	}
+
+	// Result should be nil before Esc
+	model := updated.(ui.Model)
+	if model.Result() != nil {
+		t.Error("Result should be nil before Esc")
+	}
+}
+
+func TestModel_EscReturnsResult(t *testing.T) {
 	db := setupTestTable(t)
 
 	tests := []struct {
@@ -127,15 +144,13 @@ func TestModel_EnterReturnsResult(t *testing.T) {
 				updated, _ = updated.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(tt.input)})
 			}
 
-			// Enter: execute query (stay in TUI)
-			updated, cmd := updated.Update(tea.KeyMsg{Type: tea.KeyEnter})
-			if cmd != nil {
-				t.Fatal("did not expect quit command on Enter")
-			}
-			// Esc: output & exit
-			updated, cmd = updated.Update(tea.KeyMsg{Type: tea.KeyEsc})
+			// Execute query first
+			updated, _ = updated.Update(tea.KeyMsg{Type: tea.KeyEnter})
+
+			// Esc: output result & quit
+			updated, cmd := updated.Update(tea.KeyMsg{Type: tea.KeyEsc})
 			if cmd == nil {
-				t.Fatal("expected quit command on Esc")
+				t.Fatal("Esc should return quit command")
 			}
 
 			model := updated.(ui.Model)
@@ -245,12 +260,25 @@ func TestExecuteQuery_UpdatesTable(t *testing.T) {
 	db := setupTestTable(t)
 	m := ui.NewModel(db, []string{"test"})
 
-	// Trigger initial query via initQueryMsg
-	m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	// Execute query
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
 
-	result := m.Result()
-	if result != nil {
-		t.Fatal("expected no result before exit")
+	// Switch to TABLE mode to see table data
+	updated, _ = updated.Update(tea.KeyMsg{Type: tea.KeyTab})
+	view := updated.View()
+
+	// Verify table contains expected data
+	if !strings.Contains(view, "Alice") {
+		t.Error("expected 'Alice' in table view")
+	}
+	if !strings.Contains(view, "Bob") {
+		t.Error("expected 'Bob' in table view")
+	}
+
+	// Result should still be nil before Esc
+	model := updated.(ui.Model)
+	if model.Result() != nil {
+		t.Error("expected no result before exit")
 	}
 }
 

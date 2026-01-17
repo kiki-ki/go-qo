@@ -30,9 +30,6 @@ type Model struct {
 	// Table data state
 	tableState *TableState
 
-	// Query execution state
-	lastExecQuery string
-
 	// Result when exiting
 	result *Result
 }
@@ -118,7 +115,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		query := m.textInput.Value()
 		if query != "" {
 			m.executeQuery()
-			m.lastExecQuery = query
 		}
 	case tea.WindowSizeMsg:
 		m.handleWindowResize(msg)
@@ -185,10 +181,7 @@ func (m *Model) handleKeyMsg(msg tea.KeyMsg) (tea.Cmd, bool) {
 		if query == "" {
 			return nil, false
 		}
-		if query != m.lastExecQuery {
-			m.executeQuery()
-			m.lastExecQuery = query
-		}
+		m.executeQuery()
 		return nil, false
 
 	case tea.KeyTab:
