@@ -36,14 +36,13 @@ func (m Mode) CommandsHint() string {
 var (
 	baseModeCommands = []modeCommand{
 		{key: "Tab", message: "switch mode"},
-		{key: "Esc", message: "output & quit"},
+		{key: "Esc", message: "quit & output"},
 	}
 	queryModeCommands = slices.Concat(baseModeCommands, []modeCommand{
-		{key: "Enter", message: "execute query"},
+		{key: "Enter", message: "query"},
 	})
 	tableModeCommands = slices.Concat(baseModeCommands, []modeCommand{
-		{key: "jk", message: "rows"},
-		{key: "hl", message: "columns"},
+		{key: "jk/hl", message: "move"},
 	})
 )
 

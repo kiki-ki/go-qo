@@ -29,6 +29,7 @@ Sleep 1.0s
 Type " FROM tmp"
 Sleep 1.0s
 Type " WHERE age >= 30"
+Enter
 Sleep 1.5s
 
 Tab
@@ -41,7 +42,7 @@ Sleep 500ms
 
 Tab
 Sleep 500ms
-Enter
+Escape
 Sleep 2s
 
 Type "qo data/users.json data/orders.json"
@@ -51,6 +52,9 @@ Sleep 2s
 
 Ctrl+U
 Type "SELECT u.name, o.product, o.amount FROM users u JOIN orders o ON u.id = o.user_id"
+Sleep 1.0s
+
+Enter
 Sleep 1.5s
 
 Tab
@@ -65,7 +69,8 @@ Sleep 500ms
 
 Tab
 Sleep 500ms
-Enter
+
+Escape
 Sleep 2s
 
 Type "qo -o table -q 'SELECT name, age, city FROM users ORDER BY age DESC' data/users.json"
