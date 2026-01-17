@@ -30,8 +30,7 @@ type Model struct {
 	// Table data state
 	tableState *TableState
 
-	// Debounce state
-	pendingQuery  string
+	// Query execution state
 	lastExecQuery string
 
 	// Result when exiting
@@ -43,24 +42,18 @@ func (m Model) Result() *Result {
 	return m.result
 }
 
-// PendingQuery returns the pending query for testing.
-func (m Model) PendingQuery() string {
-	return m.pendingQuery
-}
-
 // NewModel creates a new UI model.
 func NewModel(db *sql.DB, tableNames []string) Model {
 	ti := newTextInput(tableNames)
 	t := newTable()
 
 	return Model{
-		db:           db,
-		mode:         ModeQuery,
-		table:        t,
-		textInput:    ti,
-		tableState:   NewTableState(),
-		tableNames:   tableNames,
-		pendingQuery: ti.Value(),
+		db:         db,
+		mode:       ModeQuery,
+		table:      t,
+		textInput:  ti,
+		tableState: NewTableState(),
+		tableNames: tableNames,
 	}
 }
 
@@ -105,13 +98,14 @@ func newTable() table.Model {
 	return t
 }
 
+// initQueryMsg is sent to trigger initial query execution.
+type initQueryMsg struct{}
+
 // Init implements tea.Model.
 func (m Model) Init() tea.Cmd {
 	return tea.Batch(
 		textinput.Blink,
-		func() tea.Msg {
-			return NewDebounceMsg(m.textInput.Value())
-		},
+		func() tea.Msg { return initQueryMsg{} },
 	)
 }
 
@@ -120,10 +114,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 
 	switch msg := msg.(type) {
+	case initQueryMsg:
+		query := m.textInput.Value()
+		if query != "" {
+			m.executeQuery()
+			m.lastExecQuery = query
+		}
 	case tea.WindowSizeMsg:
 		m.handleWindowResize(msg)
-	case debounceMsg:
-		m.handleDebounceMsg(msg)
 	case tea.KeyMsg:
 		if cmd, quit := m.handleKeyMsg(msg); quit {
 			return m, tea.Quit
@@ -141,7 +139,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *Model) updateComponents(msg tea.Msg) []tea.Cmd {
 	var cmds []tea.Cmd
 
-	prevQuery := m.textInput.Value()
 	prevCursor := m.table.Cursor()
 
 	m.table, _ = m.table.Update(msg)
@@ -149,12 +146,6 @@ func (m *Model) updateComponents(msg tea.Msg) []tea.Cmd {
 	var cmd tea.Cmd
 	m.textInput, cmd = m.textInput.Update(msg)
 	cmds = append(cmds, cmd)
-
-	// Schedule debounced query execution when input changes in query mode
-	if m.mode == ModeQuery && m.textInput.Value() != prevQuery {
-		m.pendingQuery = m.textInput.Value()
-		cmds = append(cmds, m.scheduleQueryExecution())
-	}
 
 	// Update cell marker when row cursor changes (lightweight, preserves viewport)
 	if m.mode == ModeTable && m.table.Cursor() != prevCursor {
@@ -176,14 +167,29 @@ func (m *Model) handleWindowResize(msg tea.WindowSizeMsg) {
 // handleKeyMsg processes key events and returns a command and quit flag.
 func (m *Model) handleKeyMsg(msg tea.KeyMsg) (tea.Cmd, bool) {
 	switch msg.Type {
-	case tea.KeyCtrlC, tea.KeyEsc:
+	case tea.KeyCtrlC:
+		return nil, true
+
+	case tea.KeyEsc:
+		query := m.textInput.Value()
+		if query != "" {
+			m.result = &Result{Query: query}
+		}
 		return nil, true
 
 	case tea.KeyEnter:
-		if m.mode == ModeQuery && m.textInput.Value() != "" {
-			m.result = &Result{Query: m.textInput.Value()}
-			return nil, true
+		if m.mode != ModeQuery {
+			return nil, false
 		}
+		query := m.textInput.Value()
+		if query == "" {
+			return nil, false
+		}
+		if query != m.lastExecQuery {
+			m.executeQuery()
+			m.lastExecQuery = query
+		}
+		return nil, false
 
 	case tea.KeyTab:
 		return m.toggleMode(), false
@@ -323,4 +329,30 @@ func Run(db *sql.DB, tableNames []string) (*Result, error) {
 	}
 
 	return nil, nil
+}
+
+// executeQuery runs the current query and updates the table.
+func (m *Model) executeQuery() {
+	query := m.textInput.Value()
+	if query == "" {
+		return
+	}
+
+	rows, err := m.db.Query(query)
+	if err != nil {
+		m.err = err
+		return
+	}
+	defer func() { _ = rows.Close() }()
+
+	cols, tableRows, err := SQLRowsToTableData(rows)
+	if err != nil {
+		m.err = err
+		return
+	}
+
+	m.tableState.SetData(cols, tableRows)
+	m.table.SetCursor(0)
+	m.syncTableView(true)
+	m.err = nil
 }

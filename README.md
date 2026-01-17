@@ -110,8 +110,9 @@ qo -i csv --no-header raw.csv -q "SELECT col1, col2 FROM raw"  # Headerless CSV
 | Key | Mode | Action |
 | :--- | :--- | :--- |
 | `Tab` | ALL | Switch between Query/Table mode |
-| `Esc` / `Ctrl+C` | ALL | Quit (Output nothing) |
-| `Enter` | QUERY | Output result to stdout and Exit |
+| `Esc` | ALL | Output & Quit |
+| `Ctrl+C` | ALL | Quit (Output nothing) |
+| `Enter` | QUERY | Execute query |
 | `↑` `↓` / `j` `k` | TABLE | Scroll rows |
 | `←` `→` / `h` `l` | TABLE | Scroll columns |
 
