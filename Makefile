@@ -53,6 +53,10 @@ releaser-check: ## run goreleaser check
 releaser-dryrun: ## run goreleaser dry-run
 	go tool goreleaser release --snapshot --clean
 
+.PHONY: demo
+demo: build ## generate demo GIF
+	cd doc/demo && vhs demo.tape
+
 .PHONY: doc
 doc: ## open godoc in browser
 	go tool godoc & (sleep 1 && open http://localhost:6060/pkg/github.com/kiki-ki/go-qo/)

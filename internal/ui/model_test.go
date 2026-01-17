@@ -76,7 +76,7 @@ func TestModel_Init(t *testing.T) {
 func TestModel_WindowResize(t *testing.T) {
 	db := setupTestTable(t)
 	m := ui.NewModel(db, []string{"test"})
-	updated, _ := m.Update(ui.NewDebounceMsg(m.PendingQuery()))
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
 
 	sizes := []tea.WindowSizeMsg{
 		{Width: 120, Height: 40},
@@ -95,8 +95,7 @@ func TestModel_ErrorDisplay(t *testing.T) {
 	m := ui.NewModel(db, []string{"test"})
 
 	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("INVALID SQL")})
-	model := updated.(ui.Model)
-	updated, _ = updated.Update(ui.NewDebounceMsg(model.PendingQuery()))
+	updated, _ = updated.Update(tea.KeyMsg{Type: tea.KeyEnter})
 
 	view := updated.View()
 	if !strings.Contains(view, "Error") {
@@ -104,7 +103,24 @@ func TestModel_ErrorDisplay(t *testing.T) {
 	}
 }
 
-func TestModel_EnterReturnsResult(t *testing.T) {
+func TestModel_EnterExecutesQuery(t *testing.T) {
+	db := setupTestTable(t)
+	m := ui.NewModel(db, []string{"test"})
+
+	// Enter executes query but stays in TUI (no quit command)
+	updated, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	if cmd != nil {
+		t.Fatal("Enter should not return quit command")
+	}
+
+	// Result should be nil before Esc
+	model := updated.(ui.Model)
+	if model.Result() != nil {
+		t.Error("Result should be nil before Esc")
+	}
+}
+
+func TestModel_EscReturnsResult(t *testing.T) {
 	db := setupTestTable(t)
 
 	tests := []struct {
@@ -128,9 +144,13 @@ func TestModel_EnterReturnsResult(t *testing.T) {
 				updated, _ = updated.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(tt.input)})
 			}
 
-			updated, cmd := updated.Update(tea.KeyMsg{Type: tea.KeyEnter})
+			// Execute query first
+			updated, _ = updated.Update(tea.KeyMsg{Type: tea.KeyEnter})
+
+			// Esc: output result & quit
+			updated, cmd := updated.Update(tea.KeyMsg{Type: tea.KeyEsc})
 			if cmd == nil {
-				t.Fatal("expected quit command on Enter")
+				t.Fatal("Esc should return quit command")
 			}
 
 			model := updated.(ui.Model)
@@ -160,9 +180,8 @@ func TestModel_CellDetail(t *testing.T) {
 	m := ui.NewModel(db, []string{"test"})
 
 	updated, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
-	model := updated.(ui.Model)
-	updated, _ = updated.Update(ui.NewDebounceMsg(model.PendingQuery()))
-	updated, _ = updated.Update(tea.KeyMsg{Type: tea.KeyTab})
+	updated, _ = updated.Update(tea.KeyMsg{Type: tea.KeyEnter}) // Execute query
+	updated, _ = updated.Update(tea.KeyMsg{Type: tea.KeyTab})   // Switch to TABLE mode
 	view := updated.View()
 
 	if !strings.Contains(view, "TABLE") {
@@ -181,9 +200,8 @@ func TestModel_TableNavigation(t *testing.T) {
 	m := ui.NewModel(db, []string{"test"})
 
 	updated, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
-	model := updated.(ui.Model)
-	updated, _ = updated.Update(ui.NewDebounceMsg(model.PendingQuery()))
-	updated, _ = updated.Update(tea.KeyMsg{Type: tea.KeyTab})
+	updated, _ = updated.Update(tea.KeyMsg{Type: tea.KeyEnter}) // Execute query
+	updated, _ = updated.Update(tea.KeyMsg{Type: tea.KeyTab})   // Switch to TABLE mode
 
 	view := updated.View()
 	if !strings.Contains(view, "(1/2, 1/2)") {
@@ -235,5 +253,49 @@ func TestModel_ToggleMode(t *testing.T) {
 	view = updated.View()
 	if !strings.Contains(view, "QUERY") {
 		t.Error("expected QUERY mode after second Tab")
+	}
+}
+
+func TestExecuteQuery_UpdatesTable(t *testing.T) {
+	db := setupTestTable(t)
+	m := ui.NewModel(db, []string{"test"})
+
+	// Execute query
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+
+	// Switch to TABLE mode to see table data
+	updated, _ = updated.Update(tea.KeyMsg{Type: tea.KeyTab})
+	view := updated.View()
+
+	// Verify table contains expected data
+	if !strings.Contains(view, "Alice") {
+		t.Error("expected 'Alice' in table view")
+	}
+	if !strings.Contains(view, "Bob") {
+		t.Error("expected 'Bob' in table view")
+	}
+
+	// Result should still be nil before Esc
+	model := updated.(ui.Model)
+	if model.Result() != nil {
+		t.Error("expected no result before exit")
+	}
+}
+
+func TestExecuteQuery_SetsErrorOnInvalidSQL(t *testing.T) {
+	db := setupTestTable(t)
+	m := ui.NewModel(db, []string{"test"})
+
+	// Clear default query and set invalid one
+	var updated tea.Model = m
+	for range "SELECT * FROM test LIMIT 10" {
+		updated, _ = updated.Update(tea.KeyMsg{Type: tea.KeyBackspace})
+	}
+	updated, _ = updated.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("SELECT * FROM does_not_exist")})
+	updated, _ = updated.Update(tea.KeyMsg{Type: tea.KeyEnter})
+
+	view := updated.View()
+	if !strings.Contains(view, "Error") {
+		t.Error("expected error message in view for invalid SQL")
 	}
 }

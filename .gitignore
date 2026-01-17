@@ -27,6 +27,7 @@ go.work.sum
 
 # env file
 .env
+.envrc
 
 # Temporary files
 tmp/
