@@ -20,13 +20,17 @@ type CSVParser struct {
 	Options CSVOptions
 }
 
-// init registers the CSV parser.
+// init registers CSV and PSV parsers.
 func init() {
 	Register(&CSVParser{})
+	Register(&CSVParser{Options: CSVOptions{Delimiter: '|'}})
 }
 
 // SupportedExtensions returns the file extensions this parser handles.
 func (p *CSVParser) SupportedExtensions() []string {
+	if p.Options.Delimiter == '|' {
+		return []string{".psv"}
+	}
 	return []string{".csv"}
 }
 

@@ -93,6 +93,8 @@ func (l *Loader) parseBytes(data []byte) (*parser.ParsedData, error) {
 		return parser.ParseCSVBytes(data, parser.CSVOptions{NoHeader: l.options.NoHeader})
 	case FormatTSV:
 		return parser.ParseCSVBytes(data, parser.CSVOptions{NoHeader: l.options.NoHeader, Delimiter: '\t'})
+	case FormatPSV:
+		return parser.ParseCSVBytes(data, parser.CSVOptions{NoHeader: l.options.NoHeader, Delimiter: '|'})
 	default:
 		return nil, fmt.Errorf("unsupported format: %s", l.format)
 	}
@@ -107,6 +109,8 @@ func (l *Loader) parseFile(path string) (*parser.ParsedData, error) {
 		return parser.ParseCSVFile(path, parser.CSVOptions{NoHeader: l.options.NoHeader})
 	case FormatTSV:
 		return parser.ParseCSVFile(path, parser.CSVOptions{NoHeader: l.options.NoHeader, Delimiter: '\t'})
+	case FormatPSV:
+		return parser.ParseCSVFile(path, parser.CSVOptions{NoHeader: l.options.NoHeader, Delimiter: '|'})
 	default:
 		return nil, fmt.Errorf("unsupported format: %s", l.format)
 	}
