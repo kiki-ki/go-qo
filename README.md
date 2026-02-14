@@ -11,7 +11,7 @@
 
 > qo [cue-oh] *noun.*
 
-1. A minimalist TUI for querying JSON, CSV, and TSV using SQL.
+1. A minimalist TUI for querying JSON, CSV using SQL.
 2. **"query"** what you need, and get it **"out"** to the pipeline.
 
 <div align="center">
@@ -100,10 +100,10 @@ qo -i csv --no-header raw.csv -q "SELECT col1, col2 FROM raw"  # Headerless CSV
 
 | Flag | Short | Default | Description |
 | :--- | :--- | :--- | :--- |
-| `--input` | `-i` | json | Input format: json, csv, tsv ("json" includes "jsonl") |
-| `--output` | `-o` | json | Output format: json, jsonl, csv, tsv, table |
+| `--input` | `-i` | json | Input format: json, csv, tsv, psv ("json" includes "jsonl") |
+| `--output` | `-o` | json | Output format: json, jsonl, csv, tsv, psv, table |
 | `--query` | `-q` | | Run SQL query directly (Skip TUI) |
-| `--no-header` | | | Treat first row as data, not header (CSV/TSV only) |
+| `--no-header` | | | Treat first row as data, not header (CSV/TSV/PSV only) |
 
 ## UI Controls
 
