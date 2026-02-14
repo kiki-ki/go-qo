@@ -60,6 +60,8 @@ func (p *Printer) PrintRows(rows *sql.Rows) error {
 		return p.printCSV(columns, data, ',')
 	case FormatTSV:
 		return p.printCSV(columns, data, '\t')
+	case FormatPSV:
+		return p.printCSV(columns, data, '|')
 	default:
 		return p.printTable(columns, data)
 	}

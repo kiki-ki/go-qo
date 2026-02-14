@@ -10,10 +10,11 @@ const (
 	FormatJSONL Format = "jsonl"
 	FormatCSV   Format = "csv"
 	FormatTSV   Format = "tsv"
+	FormatPSV   Format = "psv"
 )
 
 func Formats() []string {
-	return []string{string(FormatTable), string(FormatJSON), string(FormatJSONL), string(FormatCSV), string(FormatTSV)}
+	return []string{string(FormatTable), string(FormatJSON), string(FormatJSONL), string(FormatCSV), string(FormatTSV), string(FormatPSV)}
 }
 
 func IsValidFormat(format string) bool {

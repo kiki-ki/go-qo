@@ -8,8 +8,8 @@ import (
 
 func TestFormats(t *testing.T) {
 	formats := output.Formats()
-	if len(formats) != 5 {
-		t.Errorf("expected 5 formats, got %d", len(formats))
+	if len(formats) != 6 {
+		t.Errorf("expected 6 formats, got %d", len(formats))
 	}
 }
 
@@ -23,6 +23,7 @@ func TestIsValidFormat(t *testing.T) {
 		{"jsonl", true},
 		{"csv", true},
 		{"tsv", true},
+		{"psv", true},
 		{"TABLE", false}, // case sensitive
 		{"yaml", false},
 		{"", false},
