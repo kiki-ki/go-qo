@@ -1,6 +1,7 @@
 package input
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"os"
@@ -8,6 +9,12 @@ import (
 	"github.com/kiki-ki/go-qo/internal/db"
 	"github.com/kiki-ki/go-qo/internal/parser"
 )
+
+var utf8BOM = []byte{0xEF, 0xBB, 0xBF}
+
+func stripBOM(data []byte) []byte {
+	return bytes.TrimPrefix(data, utf8BOM)
+}
 
 // LoaderOptions configures loader behavior.
 type LoaderOptions struct {
@@ -86,6 +93,7 @@ func (l *Loader) LoadFiles(filePaths []string) error {
 
 // parseBytes parses byte data based on the format.
 func (l *Loader) parseBytes(data []byte) (*parser.ParsedData, error) {
+	data = stripBOM(data)
 	switch l.format {
 	case FormatJSON:
 		return parser.ParseJSONBytes(data)
@@ -102,16 +110,9 @@ func (l *Loader) parseBytes(data []byte) (*parser.ParsedData, error) {
 
 // parseFile parses a file based on the format.
 func (l *Loader) parseFile(path string) (*parser.ParsedData, error) {
-	switch l.format {
-	case FormatJSON:
-		return parser.ParseFile(path)
-	case FormatCSV:
-		return parser.ParseCSVFile(path, parser.CSVOptions{NoHeader: l.options.NoHeader})
-	case FormatTSV:
-		return parser.ParseCSVFile(path, parser.CSVOptions{NoHeader: l.options.NoHeader, Delimiter: '\t'})
-	case FormatPSV:
-		return parser.ParseCSVFile(path, parser.CSVOptions{NoHeader: l.options.NoHeader, Delimiter: '|'})
-	default:
-		return nil, fmt.Errorf("unsupported format: %s", l.format)
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read file %s: %w", path, err)
 	}
+	return l.parseBytes(data)
 }
