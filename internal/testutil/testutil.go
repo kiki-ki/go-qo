@@ -45,6 +45,11 @@ func JSONTestdataPath(filename string) string {
 	return TestdataPath(filepath.Join("json", filename))
 }
 
+// CSVTestdataPath returns the absolute path to a CSV file in testdata/csv.
+func CSVTestdataPath(filename string) string {
+	return TestdataPath(filepath.Join("csv", filename))
+}
+
 // CloseDB registers a cleanup function to close the database when the test completes.
 func CloseDB(t *testing.T, c io.Closer) {
 	t.Helper()

@@ -1,6 +1,7 @@
 package input_test
 
 import (
+	"bytes"
 	"strings"
 	"testing"
 
@@ -88,6 +89,28 @@ func TestLoader_LoadFiles(t *testing.T) {
 			checkName:     true,
 			expectedName:  "Alice",
 			nameQuery:     "SELECT name FROM single",
+		},
+		{
+			name:          "JSON with BOM",
+			filePath:      testutil.JSONTestdataPath("bom.json"),
+			format:        input.FormatJSON,
+			wantErr:       false,
+			tableName:     "bom",
+			expectedCount: 3,
+			checkName:     true,
+			expectedName:  "Alice",
+			nameQuery:     "SELECT name FROM bom WHERE id = 1",
+		},
+		{
+			name:          "CSV with BOM",
+			filePath:      testutil.CSVTestdataPath("bom.csv"),
+			format:        input.FormatCSV,
+			wantErr:       false,
+			tableName:     "bom",
+			expectedCount: 3,
+			checkName:     true,
+			expectedName:  "Alice",
+			nameQuery:     "SELECT name FROM bom WHERE id = 1",
 		},
 	}
 
@@ -235,5 +258,58 @@ func TestLoader_LoadFiles_MultipleFiles(t *testing.T) {
 	}
 	if nestedCount != 2 {
 		t.Errorf("expected 2 nested records, got %d", nestedCount)
+	}
+}
+
+func TestLoader_LoadReader_BOM(t *testing.T) {
+	bom := []byte{0xEF, 0xBB, 0xBF}
+
+	tests := []struct {
+		name         string
+		data         []byte
+		format       input.Format
+		expectedName string
+	}{
+		{
+			name:         "CSV with BOM",
+			data:         append(bom, []byte("name,age\nAlice,30\n")...),
+			format:       input.FormatCSV,
+			expectedName: "Alice",
+		},
+		{
+			name:         "JSON with BOM",
+			data:         append(bom, []byte(`[{"name":"Alice","age":30}]`)...),
+			format:       input.FormatJSON,
+			expectedName: "Alice",
+		},
+		{
+			name:         "CSV without BOM",
+			data:         []byte("name,age\nAlice,30\n"),
+			format:       input.FormatCSV,
+			expectedName: "Alice",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			database, err := db.New()
+			if err != nil {
+				t.Fatalf("failed to create db: %v", err)
+			}
+			testutil.CloseDB(t, database)
+
+			loader := input.NewLoader(database, tt.format, nil)
+			if err := loader.LoadReader(bytes.NewReader(tt.data), "test"); err != nil {
+				t.Fatalf("LoadReader failed: %v", err)
+			}
+
+			var name string
+			if err := database.QueryRow("SELECT name FROM test LIMIT 1").Scan(&name); err != nil {
+				t.Fatalf("query failed: %v", err)
+			}
+			if name != tt.expectedName {
+				t.Errorf("expected %q, got %q", tt.expectedName, name)
+			}
+		})
 	}
 }

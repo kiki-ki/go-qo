@@ -1,11 +1,5 @@
 package parser
 
-import (
-	"fmt"
-	"path/filepath"
-	"strings"
-)
-
 // DataType represents the SQL column type.
 type DataType int
 
@@ -51,55 +45,4 @@ func (pd *ParsedData) ColumnNames() []string {
 		names[i] = col.Name
 	}
 	return names
-}
-
-// Parser defines the interface for file parsers.
-type Parser interface {
-	Parse(path string) (*ParsedData, error)
-	SupportedExtensions() []string
-}
-
-// ByteParser defines the interface for parsers that can parse byte slices.
-type ByteParser interface {
-	Parser
-	ParseBytes(data []byte) (*ParsedData, error)
-}
-
-var registry = make(map[string]Parser)
-
-// Register adds a parser to the registry.
-func Register(p Parser) {
-	for _, ext := range p.SupportedExtensions() {
-		registry[strings.ToLower(ext)] = p
-	}
-}
-
-// GetParser returns the parser for the given file path.
-func GetParser(path string) (Parser, error) {
-	ext := strings.ToLower(filepath.Ext(path))
-	if p, ok := registry[ext]; ok {
-		return p, nil
-	}
-	return nil, fmt.Errorf("unsupported file format: %s", ext)
-}
-
-// ParseFile parses a file using the appropriate parser.
-func ParseFile(path string) (*ParsedData, error) {
-	p, err := GetParser(path)
-	if err != nil {
-		return nil, err
-	}
-	return p.Parse(path)
-}
-
-// ParseCSVBytes parses CSV data from a byte slice.
-func ParseCSVBytes(data []byte, options CSVOptions) (*ParsedData, error) {
-	p := &CSVParser{Options: options}
-	return p.ParseBytes(data)
-}
-
-// ParseCSVFile parses a CSV file.
-func ParseCSVFile(path string, options CSVOptions) (*ParsedData, error) {
-	p := &CSVParser{Options: options}
-	return p.Parse(path)
 }
