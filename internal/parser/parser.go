@@ -46,9 +46,3 @@ func (pd *ParsedData) ColumnNames() []string {
 	}
 	return names
 }
-
-// ParseCSVBytes parses CSV data from a byte slice.
-func ParseCSVBytes(data []byte, options CSVOptions) (*ParsedData, error) {
-	p := &CSVParser{Options: options}
-	return p.ParseBytes(data)
-}

@@ -179,3 +179,9 @@ func (p *CSVParser) convertValue(val string, dataType DataType) any {
 		return val
 	}
 }
+
+// ParseCSVBytes parses CSV data from a byte slice.
+func ParseCSVBytes(data []byte, options CSVOptions) (*ParsedData, error) {
+	p := &CSVParser{Options: options}
+	return p.ParseBytes(data)
+}
