@@ -138,23 +138,6 @@ func TestCSVParser_TypeInference(t *testing.T) {
 	}
 }
 
-func TestCSVParser_ParseFile(t *testing.T) {
-	p := &parser.CSVParser{}
-
-	result, err := p.Parse("../../testdata/csv/simple.csv")
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	if len(result.Columns) != 3 {
-		t.Errorf("columns: got %d, want 3", len(result.Columns))
-	}
-
-	if len(result.Rows) != 3 {
-		t.Errorf("rows: got %d, want 3", len(result.Rows))
-	}
-}
-
 func TestCSVParser_NoHeader(t *testing.T) {
 	p := &parser.CSVParser{Options: parser.CSVOptions{NoHeader: true}}
 

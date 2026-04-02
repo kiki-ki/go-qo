@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/kiki-ki/go-qo/internal/parser"
-	"github.com/kiki-ki/go-qo/internal/testutil"
 )
 
 func TestJSONParser_ParseBytes(t *testing.T) {
@@ -194,34 +193,6 @@ func TestJSONParser_ParseBytes(t *testing.T) {
 				tt.checkValues(t, data)
 			}
 		})
-	}
-}
-
-func TestParseFile(t *testing.T) {
-	content := `[{"id": 1, "name": "Alice"}, {"id": 2, "name": "Bob"}]`
-	path := testutil.CreateTempJSON(t, content)
-
-	data, err := parser.ParseFile(path)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	if len(data.Rows) != 2 {
-		t.Errorf("expected 2 rows, got %d", len(data.Rows))
-	}
-}
-
-func TestParseFile_FileNotFound(t *testing.T) {
-	_, err := parser.ParseFile("/nonexistent/file.json")
-	if err == nil {
-		t.Error("expected error for nonexistent file")
-	}
-}
-
-func TestGetParser_UnsupportedFormat(t *testing.T) {
-	_, err := parser.GetParser("file.xml")
-	if err == nil {
-		t.Error("expected error for unsupported format")
 	}
 }
 

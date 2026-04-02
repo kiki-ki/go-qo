@@ -4,32 +4,12 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"os"
 
 	"github.com/tidwall/gjson"
 )
 
 // JSONParser implements Parser interface for JSON files.
 type JSONParser struct{}
-
-// init registers the JSON parser.
-func init() {
-	Register(&JSONParser{})
-}
-
-// SupportedExtensions returns the file extensions this parser handles.
-func (p *JSONParser) SupportedExtensions() []string {
-	return []string{".json", ".jsonl", ".ndjson"}
-}
-
-// Parse parses a JSON file into ParsedData.
-func (p *JSONParser) Parse(path string) (*ParsedData, error) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read file %s: %w", path, err)
-	}
-	return p.ParseBytes(data)
-}
 
 // ParseBytes parses JSON or JSON Lines from a byte slice.
 func (p *JSONParser) ParseBytes(data []byte) (*ParsedData, error) {

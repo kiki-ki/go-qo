@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/csv"
 	"fmt"
-	"os"
 	"strconv"
 	"strings"
 )
@@ -18,29 +17,6 @@ type CSVOptions struct {
 // CSVParser implements Parser interface for CSV files.
 type CSVParser struct {
 	Options CSVOptions
-}
-
-// init registers CSV and PSV parsers.
-func init() {
-	Register(&CSVParser{})
-	Register(&CSVParser{Options: CSVOptions{Delimiter: '|'}})
-}
-
-// SupportedExtensions returns the file extensions this parser handles.
-func (p *CSVParser) SupportedExtensions() []string {
-	if p.Options.Delimiter == '|' {
-		return []string{".psv"}
-	}
-	return []string{".csv"}
-}
-
-// Parse parses a CSV file into ParsedData.
-func (p *CSVParser) Parse(path string) (*ParsedData, error) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read file %s: %w", path, err)
-	}
-	return p.ParseBytes(data)
 }
 
 // ParseBytes parses CSV from a byte slice.
