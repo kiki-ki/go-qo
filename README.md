@@ -6,7 +6,6 @@
 
 [![GitHub release](https://img.shields.io/github/v/release/kiki-ki/go-qo)](https://github.com/kiki-ki/go-qo/releases)
 [![CI](https://github.com/kiki-ki/go-qo/actions/workflows/ci.yml/badge.svg)](https://github.com/kiki-ki/go-qo/actions/workflows/ci.yml)
-[![Go Report](https://goreportcard.com/badge/github.com/kiki-ki/go-qo)](https://goreportcard.com/report/github.com/kiki-ki/go-qo)
 [![License](https://img.shields.io/github/license/kiki-ki/go-qo)](https://github.com/kiki-ki/go-qo/blob/main/LICENSE)
 
 > qo [cue-oh] *noun.*
