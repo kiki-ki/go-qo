@@ -48,7 +48,7 @@ git clone --depth 1 https://github.com/kiki-ki/go-qo.git && cd go-qo && make bui
 
 ## Usage
 
-**qo** reads from both file arguments and standard input (stdin).
+**qo** reads from file arguments, or from standard input (stdin) when no files are given.
 
 ```bash
 # Interactive mode (Open TUI)
@@ -57,7 +57,13 @@ qo x.json y.json
 
 # Non-interactive mode (Direct output)
 cat x.json | qo -q "SELECT * FROM tmp WHERE id > 100"
-qo -q "SELECT * FROM x JOIN y ON x.id = y.x_id" x.json y.json"
+qo -q "SELECT * FROM x JOIN y ON x.id = y.x_id" x.json y.json
+```
+
+Stdin is loaded as the table `tmp`. To read stdin *alongside* files, pass `-` explicitly.
+
+```bash
+cat x.json | qo - y.json -q "SELECT * FROM tmp JOIN y ON tmp.id = y.tmp_id"
 ```
 
 ### Pipe-Friendly TUI

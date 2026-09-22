@@ -2,6 +2,7 @@ package input_test
 
 import (
 	"bytes"
+	"slices"
 	"strings"
 	"testing"
 
@@ -312,4 +313,67 @@ func TestLoader_LoadReader_BOM(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestSplitArgs(t *testing.T) {
+	tests := []struct {
+		name          string
+		args          []string
+		wantPaths     []string
+		wantRequested bool
+	}{
+		{"no args", nil, nil, false},
+		{"files only", []string{"a.json", "b.json"}, []string{"a.json", "b.json"}, false},
+		{"stdin only", []string{"-"}, nil, true},
+		{"stdin with files", []string{"-", "a.json"}, []string{"a.json"}, true},
+		{"stdin after files", []string{"a.json", "-"}, []string{"a.json"}, true},
+		{"repeated stdin", []string{"-", "-"}, nil, true},
+		{"dash in filename is a path", []string{"-a.json"}, []string{"-a.json"}, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			paths, requested := input.SplitArgs(tt.args)
+			if !slices.Equal(paths, tt.wantPaths) {
+				t.Errorf("paths = %v, want %v", paths, tt.wantPaths)
+			}
+			if requested != tt.wantRequested {
+				t.Errorf("stdinRequested = %v, want %v", requested, tt.wantRequested)
+			}
+		})
+	}
+}
+
+func TestUseStdin(t *testing.T) {
+	// File arguments must short-circuit before stdin is ever probed: an idle
+	// pipe never reaches EOF, and reading it would hang the process.
+	t.Run("file args do not use stdin", func(t *testing.T) {
+		got, err := input.UseStdin([]string{"a.json"}, false)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if got {
+			t.Error("expected false when file arguments are present")
+		}
+	})
+
+	t.Run("explicit marker uses stdin alongside files", func(t *testing.T) {
+		got, err := input.UseStdin([]string{"a.json"}, true)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if !got {
+			t.Error("expected true when stdin was explicitly requested")
+		}
+	})
+
+	t.Run("explicit marker uses stdin without files", func(t *testing.T) {
+		got, err := input.UseStdin(nil, true)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if !got {
+			t.Error("expected true when stdin was explicitly requested")
+		}
+	})
 }

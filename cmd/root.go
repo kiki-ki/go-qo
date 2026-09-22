@@ -34,6 +34,7 @@ var rootCmd = &cobra.Command{
 	Example: strings.Join([]string{
 		"  qo data.json                                        # Interactive TUI mode",
 		"  cat data.json | qo                                  # Pipe to TUI, output to stdout",
+		"  cat data.json | qo - other.json                     # Read stdin alongside files",
 		`  qo -q "SELECT * FROM data" data.json                # Direct query mode`,
 		`  qo -i csv -o json data.csv -q "SELECT * FROM data"  # CSV to JSON`,
 	}, "\n"),
@@ -75,17 +76,18 @@ func run(cmd *cobra.Command, args []string) error {
 		NoHeader: noHeader,
 	})
 
-	hasStdinData, err := input.HasStdinData()
+	filePaths, stdinRequested := input.SplitArgs(args)
+	useStdin, err := input.UseStdin(filePaths, stdinRequested)
 	if err != nil {
 		return err
 	}
 
 	cfg := &runConfig{
 		query:     queryFlag,
-		filePaths: args,
+		filePaths: filePaths,
 	}
 
-	if err := loadData(loader, cfg, hasStdinData); err != nil {
+	if err := loadData(loader, cfg, useStdin); err != nil {
 		return err
 	}
 
@@ -105,14 +107,14 @@ func validateFormats() error {
 
 // loadData loads data from stdin and/or files into the database.
 // Returns the list of loaded table names.
-func loadData(loader *input.Loader, cfg *runConfig, hasStdinData bool) error {
-	if !hasStdinData && len(cfg.filePaths) == 0 {
+func loadData(loader *input.Loader, cfg *runConfig, useStdin bool) error {
+	if !useStdin && len(cfg.filePaths) == 0 {
 		return fmt.Errorf("no input data: provide files as arguments or pipe data via stdin")
 	}
 
 	var tableNames []string
 
-	if hasStdinData {
+	if useStdin {
 		if err := loader.LoadStdin(stdinTableName); err != nil {
 			return err
 		}
