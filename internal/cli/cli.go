@@ -14,8 +14,8 @@ type Options struct {
 	Output io.Writer
 }
 
-// DefaultOptions returns default CLI options.
-func DefaultOptions() *Options {
+// defaultOptions returns default CLI options.
+func defaultOptions() *Options {
 	return &Options{
 		Format: output.FormatJSON,
 		Output: os.Stdout,
@@ -25,7 +25,7 @@ func DefaultOptions() *Options {
 // Run executes a SQL query and prints results.
 func Run(db *sql.DB, query string, opts *Options) error {
 	if opts == nil {
-		opts = DefaultOptions()
+		opts = defaultOptions()
 	}
 
 	rows, err := db.Query(query)
