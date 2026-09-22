@@ -35,6 +35,7 @@ var rootCmd = &cobra.Command{
 		"  qo data.json                                        # Interactive TUI mode",
 		"  cat data.json | qo                                  # Pipe to TUI, output to stdout",
 		"  cat data.json | qo - other.json                     # Read stdin alongside files",
+		`  qo -q "SELECT * FROM a JOIN b ..." a.csv b.json     # Mixed input formats`,
 		`  qo -q "SELECT * FROM data" data.json                # Direct query mode`,
 		`  qo -i csv -o json data.csv -q "SELECT * FROM data"  # CSV to JSON`,
 	}, "\n"),
@@ -43,7 +44,7 @@ var rootCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.Flags().StringVarP(&inputFormat, "input", "i", "json", "Input format: json, csv, tsv, psv")
+	rootCmd.Flags().StringVarP(&inputFormat, "input", "i", "json", "Input format: json, csv, tsv, psv (default: by file extension)")
 	rootCmd.Flags().StringVarP(&outputFormat, "output", "o", "json", "Output format: json, jsonl, csv, tsv, psv, table")
 	rootCmd.Flags().StringVarP(&queryFlag, "query", "q", "", "SQL query to execute (if omitted, interactive mode)")
 	rootCmd.Flags().BoolVar(&noHeader, "no-header", false, "Treat first row as data, not header (CSV/TSV/PSV only)")
@@ -74,6 +75,9 @@ func run(cmd *cobra.Command, args []string) error {
 
 	loader := input.NewLoader(database, input.Format(inputFormat), &input.LoaderOptions{
 		NoHeader: noHeader,
+		// An explicit -i applies to every file; otherwise each file's
+		// extension decides, so mixed-format inputs can be joined.
+		DetectFormat: !cmd.Flags().Changed("input"),
 	})
 
 	filePaths, stdinRequested := input.SplitArgs(args)

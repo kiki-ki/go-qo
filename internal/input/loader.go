@@ -21,13 +21,14 @@ func stripBOM(data []byte) []byte {
 
 // LoaderOptions configures loader behavior.
 type LoaderOptions struct {
-	NoHeader bool // CSV: treat first row as data, not header
+	NoHeader     bool // CSV: treat first row as data, not header
+	DetectFormat bool // Resolve each file's format from its extension
 }
 
 // Loader handles loading data into the database.
 type Loader struct {
 	db      *db.DB
-	format  Format
+	format  Format // fallback when the format cannot be resolved from a path
 	options *LoaderOptions
 	used    map[string]bool // table names already taken by this loader
 }
@@ -114,7 +115,8 @@ func (l *Loader) LoadReader(r io.Reader, tableName string) (string, error) {
 		return "", fmt.Errorf("failed to read input: %w", err)
 	}
 
-	parsed, err := l.parseBytes(data)
+	// A reader has no path to infer from, so the explicit format is used.
+	parsed, err := l.parseBytes(data, l.format)
 	if err != nil {
 		return "", fmt.Errorf("failed to parse input: %w", err)
 	}
@@ -149,10 +151,23 @@ func (l *Loader) LoadFiles(filePaths []string) ([]string, error) {
 	return tableNames, nil
 }
 
+// formatFor resolves the format to parse a file with. The explicit format wins
+// when the user asked for one, so files whose extension disagrees with their
+// contents stay loadable.
+func (l *Loader) formatFor(path string) Format {
+	if !l.options.DetectFormat {
+		return l.format
+	}
+	if format, ok := FormatFromPath(path); ok {
+		return format
+	}
+	return l.format
+}
+
 // parseBytes parses byte data based on the format.
-func (l *Loader) parseBytes(data []byte) (*parser.ParsedData, error) {
+func (l *Loader) parseBytes(data []byte, format Format) (*parser.ParsedData, error) {
 	data = stripBOM(data)
-	switch l.format {
+	switch format {
 	case FormatJSON:
 		return parser.ParseJSONBytes(data)
 	case FormatCSV:
@@ -162,7 +177,7 @@ func (l *Loader) parseBytes(data []byte) (*parser.ParsedData, error) {
 	case FormatPSV:
 		return parser.ParseCSVBytes(data, parser.CSVOptions{NoHeader: l.options.NoHeader, Delimiter: '|'})
 	default:
-		return nil, fmt.Errorf("unsupported format: %s", l.format)
+		return nil, fmt.Errorf("unsupported format: %s", format)
 	}
 }
 
@@ -172,5 +187,5 @@ func (l *Loader) parseFile(path string) (*parser.ParsedData, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to read file %s: %w", path, err)
 	}
-	return l.parseBytes(data)
+	return l.parseBytes(data, l.formatFor(path))
 }

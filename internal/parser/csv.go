@@ -14,7 +14,7 @@ type CSVOptions struct {
 	Delimiter rune // Field delimiter (default: ',')
 }
 
-// CSVParser implements Parser interface for CSV files.
+// CSVParser parses delimiter separated values (CSV, TSV, PSV).
 type CSVParser struct {
 	Options CSVOptions
 }

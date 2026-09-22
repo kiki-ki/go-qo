@@ -46,3 +46,34 @@ func TestIsValidFormat(t *testing.T) {
 		}
 	}
 }
+
+func TestFormatFromPath(t *testing.T) {
+	tests := []struct {
+		path      string
+		want      input.Format
+		wantFound bool
+	}{
+		{"data.json", input.FormatJSON, true},
+		{"data.jsonl", input.FormatJSON, true},
+		{"data.ndjson", input.FormatJSON, true},
+		{"data.csv", input.FormatCSV, true},
+		{"data.tsv", input.FormatTSV, true},
+		{"data.psv", input.FormatPSV, true},
+		{"path/to/data.CSV", input.FormatCSV, true}, // case insensitive
+		{"archive.csv.gz", "", false},               // only the last extension counts
+		{"data.txt", "", false},
+		{"data", "", false},
+		{"", "", false},
+	}
+
+	for _, tt := range tests {
+		got, found := input.FormatFromPath(tt.path)
+		if found != tt.wantFound {
+			t.Errorf("FormatFromPath(%q) found = %v, want %v", tt.path, found, tt.wantFound)
+			continue
+		}
+		if found && got != tt.want {
+			t.Errorf("FormatFromPath(%q) = %q, want %q", tt.path, got, tt.want)
+		}
+	}
+}
