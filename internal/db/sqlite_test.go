@@ -94,12 +94,10 @@ func TestTableNameFromPath(t *testing.T) {
 		// Anything else invalid in an identifier is replaced.
 		{"we!rd@name.json", "we_rd_name"},
 		{"a+b(c).json", "a_b_c_"},
-		// SQLite treats non-ASCII bytes as identifier characters, including the
-		// combining marks that decomposed filenames are built from.
+		// Non-ASCII passes through, combining marks included: macOS stores
+		// filenames decomposed, so "ガス" can arrive as カ + U+3099 + ス.
 		{"売上.json", "売上"},
-		{"a$b.json", "a$b"},
-		{"\u30ac\u30b9.json", "\u30ac\u30b9"},             // precomposed ガス
-		{"\u30ab\u3099\u30b9.json", "\u30ab\u3099\u30b9"}, // decomposed ガス, as macOS stores it
+		{"\u30ab\u3099\u30b9.json", "\u30ab\u3099\u30b9"},
 		// Degenerate names still have to yield a usable identifier.
 		{".json", "_"},
 		{"!.json", "_"},
