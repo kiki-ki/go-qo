@@ -255,6 +255,51 @@ func TestJSONParser_ParseBytes(t *testing.T) {
 			},
 		},
 		{
+			// gjson reads a Get argument as a path, so a key holding "." used
+			// to resolve against nested data instead of itself.
+			name:     "key containing a dot",
+			input:    `[{"user.name": "alice"}]`,
+			wantRows: 1,
+			wantCols: 1,
+			checkValues: func(t *testing.T, data *parser.ParsedData) {
+				if data.Columns[0].Name != "user.name" {
+					t.Errorf("expected column user.name, got %q", data.Columns[0].Name)
+				}
+				if data.Rows[0][0] != "alice" {
+					t.Errorf("expected alice, got %v", data.Rows[0][0])
+				}
+			},
+		},
+		{
+			name:     "dotted key does not read the nested path",
+			input:    `[{"a.b": 1, "a": {"b": 2}}]`,
+			wantRows: 1,
+			wantCols: 2,
+			checkValues: func(t *testing.T, data *parser.ParsedData) {
+				cols := data.ColumnNames()
+				if cols[0] != "a.b" || cols[1] != "a" {
+					t.Fatalf("expected columns [a.b a], got %v", cols)
+				}
+				if data.Rows[0][0] != int64(1) {
+					t.Errorf("a.b = %v, want 1 (the literal key, not a.b as a path)", data.Rows[0][0])
+				}
+				if data.Rows[0][1] != `{"b":2}` {
+					t.Errorf("a = %v, want {\"b\":2}", data.Rows[0][1])
+				}
+			},
+		},
+		{
+			name:     "key containing a backslash",
+			input:    `[{"a\\b": 1}]`,
+			wantRows: 1,
+			wantCols: 1,
+			checkValues: func(t *testing.T, data *parser.ParsedData) {
+				if data.Rows[0][0] != int64(1) {
+					t.Errorf("expected 1, got %v", data.Rows[0][0])
+				}
+			},
+		},
+		{
 			name:    "invalid JSON",
 			input:   `{invalid}`,
 			wantErr: true,

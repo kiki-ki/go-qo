@@ -137,27 +137,31 @@ func (p *JSONParser) widenType(existing, new DataType) DataType {
 
 // extractRows extracts row data from items based on columns.
 func (p *JSONParser) extractRows(items []gjson.Result, columns []Column) [][]any {
-	scalarIdx := -1
+	index := make(map[string]int, len(columns))
 	for i, col := range columns {
-		if col.Name == scalarColumnName {
-			scalarIdx = i
-			break
-		}
+		index[col.Name] = i
 	}
 
 	rows := make([][]any, 0, len(items))
 	for _, item := range items {
 		row := make([]any, len(columns))
+
 		if !item.IsObject() {
-			if scalarIdx >= 0 {
-				row[scalarIdx] = p.extractValue(item)
+			if i, ok := index[scalarColumnName]; ok {
+				row[i] = p.extractValue(item)
 			}
 			rows = append(rows, row)
 			continue
 		}
-		for i, col := range columns {
-			row[i] = p.extractValue(item.Get(col.Name))
-		}
+
+		// ForEach reports raw keys. Get would read the column name as a gjson
+		// path instead, losing or mismatching any key holding "." or "\\".
+		item.ForEach(func(key, value gjson.Result) bool {
+			if i, ok := index[key.String()]; ok {
+				row[i] = p.extractValue(value)
+			}
+			return true
+		})
 		rows = append(rows, row)
 	}
 	return rows
