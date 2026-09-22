@@ -38,7 +38,7 @@ var rootCmd = &cobra.Command{
 		`  qo -i csv -o json data.csv -q "SELECT * FROM data"  # CSV to JSON`,
 	}, "\n"),
 	Args: cobra.ArbitraryArgs,
-	RunE: runQuery,
+	RunE: run,
 }
 
 func init() {
@@ -55,14 +55,12 @@ type runConfig struct {
 	tableNames []string
 }
 
-func runQuery(cmd *cobra.Command, args []string) error {
-	if err := run(cmd, args); err != nil {
-		return fmt.Errorf("%w", err)
-	}
-	return nil
-}
-
 func run(cmd *cobra.Command, args []string) error {
+	// Silenced here rather than on the command so that flag parsing errors,
+	// which happen before RunE, still show usage. Everything past this point
+	// is a runtime failure that usage cannot help with.
+	cmd.SilenceUsage = true
+
 	if err := validateFormats(); err != nil {
 		return err
 	}
