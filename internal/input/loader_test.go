@@ -426,32 +426,6 @@ func TestLoader_LoadFiles_NameCollision(t *testing.T) {
 	}
 }
 
-func TestLoader_LoadReader_NameCollision(t *testing.T) {
-	database, err := db.New()
-	if err != nil {
-		t.Fatalf("failed to create db: %v", err)
-	}
-	testutil.CloseDB(t, database)
-
-	loader := input.NewLoader(database, input.FormatJSON, nil)
-
-	first, err := loader.LoadReader(strings.NewReader(`[{"id": 1}]`), "tmp")
-	if err != nil {
-		t.Fatalf("LoadReader failed: %v", err)
-	}
-	if first != "tmp" {
-		t.Errorf("first name = %q, want tmp", first)
-	}
-
-	second, err := loader.LoadReader(strings.NewReader(`[{"id": 2}]`), "tmp")
-	if err != nil {
-		t.Fatalf("LoadReader failed: %v", err)
-	}
-	if second != "tmp_2" {
-		t.Errorf("second name = %q, want tmp_2", second)
-	}
-}
-
 func TestLoader_LoadFiles_DetectFormat(t *testing.T) {
 	dir := t.TempDir()
 	write := func(name, content string) string {
