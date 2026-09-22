@@ -160,6 +160,101 @@ func TestJSONParser_ParseBytes(t *testing.T) {
 			},
 		},
 		{
+			name:     "array of numbers",
+			input:    `[1, 2, 3]`,
+			wantRows: 3,
+			wantCols: 1,
+			checkValues: func(t *testing.T, data *parser.ParsedData) {
+				if data.Columns[0].Name != "value" {
+					t.Errorf("expected column name value, got %q", data.Columns[0].Name)
+				}
+				if data.Columns[0].Type != parser.TypeInteger {
+					t.Errorf("expected INTEGER, got %v", data.Columns[0].Type)
+				}
+				for i, want := range []any{int64(1), int64(2), int64(3)} {
+					if data.Rows[i][0] != want {
+						t.Errorf("row %d: expected %v, got %v", i, want, data.Rows[i][0])
+					}
+				}
+			},
+		},
+		{
+			name:     "array of strings",
+			input:    `["a", "b"]`,
+			wantRows: 2,
+			wantCols: 1,
+			checkValues: func(t *testing.T, data *parser.ParsedData) {
+				if data.Rows[0][0] != "a" || data.Rows[1][0] != "b" {
+					t.Errorf("expected a and b, got %v and %v", data.Rows[0][0], data.Rows[1][0])
+				}
+			},
+		},
+		{
+			name:     "array of arrays",
+			input:    `[[1, 2], [3, 4]]`,
+			wantRows: 2,
+			wantCols: 1,
+			checkValues: func(t *testing.T, data *parser.ParsedData) {
+				if data.Columns[0].Type != parser.TypeJSON {
+					t.Errorf("expected JSON type, got %v", data.Columns[0].Type)
+				}
+				if data.Rows[0][0] != "[1,2]" {
+					t.Errorf("expected [1,2], got %v", data.Rows[0][0])
+				}
+			},
+		},
+		{
+			name:     "scalar array widens int to real",
+			input:    `[1, 2.5]`,
+			wantRows: 2,
+			wantCols: 1,
+			checkValues: func(t *testing.T, data *parser.ParsedData) {
+				if data.Columns[0].Type != parser.TypeReal {
+					t.Errorf("expected REAL after widening, got %v", data.Columns[0].Type)
+				}
+			},
+		},
+		{
+			name:     "scalars mixed with objects",
+			input:    `[1, {"a": 2}]`,
+			wantRows: 2,
+			wantCols: 2,
+			checkValues: func(t *testing.T, data *parser.ParsedData) {
+				cols := data.ColumnNames()
+				if cols[0] != "value" || cols[1] != "a" {
+					t.Errorf("expected columns [value a], got %v", cols)
+				}
+				if data.Rows[0][0] != int64(1) || data.Rows[0][1] != nil {
+					t.Errorf("scalar row: got %v", data.Rows[0])
+				}
+				if data.Rows[1][0] != nil || data.Rows[1][1] != int64(2) {
+					t.Errorf("object row: got %v", data.Rows[1])
+				}
+			},
+		},
+		{
+			name:     "top level scalar",
+			input:    `"hello"`,
+			wantRows: 1,
+			wantCols: 1,
+			checkValues: func(t *testing.T, data *parser.ParsedData) {
+				if data.Rows[0][0] != "hello" {
+					t.Errorf("expected hello, got %v", data.Rows[0][0])
+				}
+			},
+		},
+		{
+			name:     "JSON Lines of scalars",
+			input:    "1\n2\n3\n",
+			wantRows: 3,
+			wantCols: 1,
+			checkValues: func(t *testing.T, data *parser.ParsedData) {
+				if data.Rows[2][0] != int64(3) {
+					t.Errorf("expected 3, got %v", data.Rows[2][0])
+				}
+			},
+		},
+		{
 			name:    "invalid JSON",
 			input:   `{invalid}`,
 			wantErr: true,

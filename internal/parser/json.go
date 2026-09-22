@@ -8,7 +8,11 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-// JSONParser implements Parser interface for JSON files.
+// scalarColumnName is the column non-object items (numbers, strings, arrays)
+// are stored under, since they have no key of their own.
+const scalarColumnName = "value"
+
+// JSONParser parses JSON and JSON Lines input.
 type JSONParser struct{}
 
 // ParseBytes parses JSON or JSON Lines from a byte slice.
@@ -65,28 +69,32 @@ func (p *JSONParser) parseJSONLines(data []byte) ([]gjson.Result, error) {
 // extractColumns extracts column definitions from items.
 func (p *JSONParser) extractColumns(items []gjson.Result) []Column {
 	keyMap := make(map[string]int)
-	typeMap := make(map[string]DataType)
 	var columns []Column
 
-	for _, item := range items {
-		item.ForEach(func(key, value gjson.Result) bool {
-			k := key.String()
-			newType := p.inferType(value)
+	addKey := func(k string, t DataType) {
+		if idx, exists := keyMap[k]; exists {
+			columns[idx].Type = p.widenType(columns[idx].Type, t)
+			return
+		}
+		keyMap[k] = len(columns)
+		columns = append(columns, Column{Name: k, Type: t})
+	}
 
-			if idx, exists := keyMap[k]; exists {
-				columns[idx].Type = p.widenType(typeMap[k], newType)
-				typeMap[k] = columns[idx].Type
-			} else {
-				keyMap[k] = len(columns)
-				typeMap[k] = newType
-				columns = append(columns, Column{Name: k, Type: newType})
-			}
+	for _, item := range items {
+		// gjson runs ForEach once on a non-object, yielding an empty key, so
+		// scalars and arrays have to be routed to the scalar column instead.
+		if !item.IsObject() {
+			addKey(scalarColumnName, p.inferType(item))
+			continue
+		}
+		item.ForEach(func(key, value gjson.Result) bool {
+			addKey(key.String(), p.inferType(value))
 			return true
 		})
 	}
 
 	if len(columns) == 0 {
-		columns = []Column{{Name: "value", Type: TypeText}}
+		columns = []Column{{Name: scalarColumnName, Type: TypeText}}
 	}
 
 	return columns
@@ -129,9 +137,24 @@ func (p *JSONParser) widenType(existing, new DataType) DataType {
 
 // extractRows extracts row data from items based on columns.
 func (p *JSONParser) extractRows(items []gjson.Result, columns []Column) [][]any {
+	scalarIdx := -1
+	for i, col := range columns {
+		if col.Name == scalarColumnName {
+			scalarIdx = i
+			break
+		}
+	}
+
 	rows := make([][]any, 0, len(items))
 	for _, item := range items {
 		row := make([]any, len(columns))
+		if !item.IsObject() {
+			if scalarIdx >= 0 {
+				row[scalarIdx] = p.extractValue(item)
+			}
+			rows = append(rows, row)
+			continue
+		}
 		for i, col := range columns {
 			row[i] = p.extractValue(item.Get(col.Name))
 		}
