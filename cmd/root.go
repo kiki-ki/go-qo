@@ -44,7 +44,7 @@ var rootCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.Flags().StringVarP(&inputFormat, "input", "i", "json", "Input format: json, csv, tsv, psv (default: by file extension)")
+	rootCmd.Flags().StringVarP(&inputFormat, "input", "i", "", "Input format: json, csv, tsv, psv (default: by file extension, json if unknown)")
 	rootCmd.Flags().StringVarP(&outputFormat, "output", "o", "json", "Output format: json, jsonl, csv, tsv, psv, table")
 	rootCmd.Flags().StringVarP(&queryFlag, "query", "q", "", "SQL query to execute (if omitted, interactive mode)")
 	rootCmd.Flags().BoolVar(&noHeader, "no-header", false, "Treat first row as data, not header (CSV/TSV/PSV only)")
@@ -73,11 +73,17 @@ func run(cmd *cobra.Command, args []string) error {
 	}
 	defer func() { _ = database.Close() }()
 
-	loader := input.NewLoader(database, input.Format(inputFormat), &input.LoaderOptions{
-		NoHeader: noHeader,
-		// An explicit -i applies to every file; otherwise each file's
-		// extension decides, so mixed-format inputs can be joined.
-		DetectFormat: !cmd.Flags().Changed("input"),
+	// An explicit -i applies to every input; otherwise each file's extension
+	// decides, so mixed-format inputs can be joined. An empty -i is what makes
+	// cobra omit a default from --help, so it doubles as the "not set" signal.
+	format, detect := input.Format(inputFormat), inputFormat == ""
+	if detect {
+		format = input.FormatJSON
+	}
+
+	loader := input.NewLoader(database, format, &input.LoaderOptions{
+		NoHeader:     noHeader,
+		DetectFormat: detect,
 	})
 
 	filePaths, stdinRequested := input.SplitArgs(args)
@@ -100,7 +106,7 @@ func run(cmd *cobra.Command, args []string) error {
 
 // validateFormats checks if input/output formats are valid.
 func validateFormats() error {
-	if !input.IsValidFormat(inputFormat) {
+	if inputFormat != "" && !input.IsValidFormat(inputFormat) {
 		return fmt.Errorf("unsupported input format: %s (supported: %v)", inputFormat, input.Formats())
 	}
 	if !output.IsValidFormat(outputFormat) {
