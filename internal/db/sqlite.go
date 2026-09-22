@@ -87,41 +87,26 @@ func (db *DB) insertRows(tableName string, columns []parser.Column, rows [][]any
 
 // TableNameFromPath generates a table name from a file path.
 //
-// The result is usable in a query without quoting, so that the name qo reports
-// can be pasted straight into SQL. Names are not guaranteed to be unique across
-// paths; callers that load several files must resolve collisions themselves.
+// Anything SQLite would reject in an unquoted identifier becomes "_", so the
+// name qo reports can be pasted straight into a query. Names are not unique
+// across paths; callers loading several files resolve collisions themselves.
 func TableNameFromPath(path string) string {
 	base := filepath.Base(path)
 	name := strings.TrimSuffix(base, filepath.Ext(base))
 
-	var b strings.Builder
-	b.Grow(len(name))
-	for _, r := range name {
-		if isIdentRune(r) {
-			b.WriteRune(r)
-			continue
+	// SQLite identifiers allow ASCII letters, digits and "_", plus any byte
+	// above ASCII, which keeps non-ASCII filenames intact.
+	name = strings.Map(func(r rune) rune {
+		if r == '_' || r >= utf8.RuneSelf ||
+			r >= '0' && r <= '9' || r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' {
+			return r
 		}
-		b.WriteRune('_')
-	}
-	name = b.String()
+		return '_'
+	}, name)
 
-	// SQLite rejects an unquoted identifier that begins with a digit, and an
-	// empty name is not an identifier at all.
-	if name == "" || (name[0] >= '0' && name[0] <= '9') {
+	// An identifier can be neither empty nor digit-initial.
+	if name == "" || name[0] >= '0' && name[0] <= '9' {
 		name = "_" + name
 	}
 	return name
-}
-
-// isIdentRune reports whether r may appear in an unquoted SQLite identifier.
-// SQLite's tokenizer accepts ASCII letters, digits, "_" and "$", and treats
-// every byte above ASCII as an identifier character, so any non-ASCII rune
-// qualifies. Classifying by Unicode category instead would reject combining
-// marks, mangling decomposed filenames such as the macOS form of "ガス".
-func isIdentRune(r rune) bool {
-	return r >= 'a' && r <= 'z' ||
-		r >= 'A' && r <= 'Z' ||
-		r >= '0' && r <= '9' ||
-		r == '_' || r == '$' ||
-		r >= utf8.RuneSelf
 }
