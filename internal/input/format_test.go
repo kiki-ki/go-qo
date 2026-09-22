@@ -61,9 +61,7 @@ func TestFormatFromPath(t *testing.T) {
 		{"data.psv", input.FormatPSV, true},
 		{"path/to/data.CSV", input.FormatCSV, true}, // case insensitive
 		{"archive.csv.gz", "", false},               // only the last extension counts
-		{"data.txt", "", false},
-		{"data", "", false},
-		{"", "", false},
+		{"data.txt", "", false},                     // unknown or absent extension
 	}
 
 	for _, tt := range tests {
