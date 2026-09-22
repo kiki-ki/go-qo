@@ -89,16 +89,11 @@ qo sales.csv -o csv -q "SELECT region, SUM(amount) FROM sales GROUP BY region"
 
 ### Mix Formats
 
-Each file's format is inferred from its extension, so inputs of different formats can be joined.
+Each file's format comes from its extension, so different formats can be joined. `-i` overrides that for every input, including stdin.
 
 ```bash
 qo -q "SELECT u.name, l.action FROM users u JOIN logs l ON u.id = l.uid" users.csv logs.json
-```
-
-Pass `-i` to force one format for every input, for files whose extension does not match their contents.
-
-```bash
-qo -i csv -q "SELECT * FROM export" export.txt
+qo -i csv -q "SELECT * FROM export" export.txt  # extension says nothing useful
 ```
 
 ### Convert Formats
