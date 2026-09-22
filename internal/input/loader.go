@@ -10,6 +10,9 @@ import (
 	"github.com/kiki-ki/go-qo/internal/parser"
 )
 
+// stdinArg is the conventional CLI marker asking to read standard input.
+const stdinArg = "-"
+
 var utf8BOM = []byte{0xEF, 0xBB, 0xBF}
 
 func stripBOM(data []byte) []byte {
@@ -40,8 +43,37 @@ func NewLoader(database *db.DB, format Format, options *LoaderOptions) *Loader {
 	}
 }
 
-// HasStdinData checks if there's data available on stdin.
-func HasStdinData() (bool, error) {
+// SplitArgs separates the "-" stdin marker from file paths.
+func SplitArgs(args []string) (filePaths []string, stdinRequested bool) {
+	for _, arg := range args {
+		if arg == stdinArg {
+			stdinRequested = true
+			continue
+		}
+		filePaths = append(filePaths, arg)
+	}
+	return filePaths, stdinRequested
+}
+
+// UseStdin reports whether stdin should be read for the given arguments.
+//
+// stdin is probed only when there is nothing else to read. The probe cannot
+// tell an empty pipe from one that simply has not received data yet, so probing
+// it while file arguments are present would risk blocking on a pipe that never
+// reaches EOF. Pass "-" to read stdin alongside files.
+func UseStdin(filePaths []string, stdinRequested bool) (bool, error) {
+	if stdinRequested {
+		return true, nil
+	}
+	if len(filePaths) > 0 {
+		return false, nil
+	}
+	return hasStdinData()
+}
+
+// hasStdinData reports whether stdin is something other than a terminal.
+// It cannot tell whether that source actually carries data; see UseStdin.
+func hasStdinData() (bool, error) {
 	stat, err := os.Stdin.Stat()
 	if err != nil {
 		return false, fmt.Errorf("failed to stat stdin: %w", err)
