@@ -426,6 +426,78 @@ func TestLoader_LoadFiles_NameCollision(t *testing.T) {
 	}
 }
 
+func TestLoader_LoadFiles_DetectFormat(t *testing.T) {
+	dir := t.TempDir()
+	write := func(name, content string) string {
+		path := filepath.Join(dir, name)
+		if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+			t.Fatalf("failed to write %s: %v", name, err)
+		}
+		return path
+	}
+	csvPath := write("users.csv", "id,name\n1,alice\n")
+	jsonPath := write("logs.json", `[{"uid": 1, "action": "login"}]`)
+	unknownPath := write("plain.txt", `[{"n": 1}]`)
+
+	t.Run("resolves each file by extension", func(t *testing.T) {
+		database, err := db.New()
+		if err != nil {
+			t.Fatalf("failed to create db: %v", err)
+		}
+		testutil.CloseDB(t, database)
+
+		loader := input.NewLoader(database, "", nil)
+		if _, err := loader.LoadFiles([]string{csvPath, jsonPath}); err != nil {
+			t.Fatalf("LoadFiles failed: %v", err)
+		}
+
+		var name, action string
+		query := "SELECT users.name, logs.action FROM users JOIN logs ON users.id = logs.uid"
+		if err := database.QueryRow(query).Scan(&name, &action); err != nil {
+			t.Fatalf("join failed: %v", err)
+		}
+		if name != "alice" || action != "login" {
+			t.Errorf("got %q/%q, want alice/login", name, action)
+		}
+	})
+
+	t.Run("unknown extension falls back to JSON", func(t *testing.T) {
+		database, err := db.New()
+		if err != nil {
+			t.Fatalf("failed to create db: %v", err)
+		}
+		testutil.CloseDB(t, database)
+
+		loader := input.NewLoader(database, "", nil)
+		if _, err := loader.LoadFiles([]string{unknownPath}); err != nil {
+			t.Fatalf("LoadFiles failed: %v", err)
+		}
+
+		var n int
+		if err := database.QueryRow("SELECT n FROM plain").Scan(&n); err != nil {
+			t.Fatalf("query failed: %v", err)
+		}
+		if n != 1 {
+			t.Errorf("n = %d, want 1", n)
+		}
+	})
+
+	t.Run("explicit format ignores the extension", func(t *testing.T) {
+		database, err := db.New()
+		if err != nil {
+			t.Fatalf("failed to create db: %v", err)
+		}
+		testutil.CloseDB(t, database)
+
+		// A forced format must win over the extension, so the CSV file is
+		// parsed as JSON and fails.
+		loader := input.NewLoader(database, input.FormatJSON, nil)
+		if _, err := loader.LoadFiles([]string{csvPath}); err == nil {
+			t.Error("expected error when parsing CSV as JSON, got nil")
+		}
+	})
+}
+
 func TestLoader_LoadFiles_CaseInsensitiveCollision(t *testing.T) {
 	dir := t.TempDir()
 	paths := make([]string, 0, 2)

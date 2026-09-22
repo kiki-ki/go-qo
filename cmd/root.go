@@ -32,18 +32,19 @@ var rootCmd = &cobra.Command{
 	Short:   "Query structured data with SQL",
 	Long:    "qo is a TUI/CLI tool that lets you query structured data using SQL.",
 	Example: strings.Join([]string{
-		"  qo data.json                                        # Interactive TUI mode",
-		"  cat data.json | qo                                  # Pipe to TUI, output to stdout",
-		"  cat data.json | qo - other.json                     # Read stdin alongside files",
-		`  qo -q "SELECT * FROM data" data.json                # Direct query mode`,
-		`  qo -i csv -o json data.csv -q "SELECT * FROM data"  # CSV to JSON`,
+		"  qo data.json                                       # Interactive TUI mode",
+		"  cat data.json | qo                                 # Pipe to TUI, output to stdout",
+		"  cat data.json | qo - other.json                    # Read stdin alongside files",
+		`  qo -q "SELECT * FROM data" data.json               # Direct query mode`,
+		`  qo -o json data.csv -q "SELECT * FROM data"        # CSV to JSON`,
+		`  qo -q "SELECT * FROM a JOIN b" a.csv b.json        # Join across formats`,
 	}, "\n"),
 	Args: cobra.ArbitraryArgs,
 	RunE: run,
 }
 
 func init() {
-	rootCmd.Flags().StringVarP(&inputFormat, "input", "i", "json", "Input format: json, csv, tsv, psv")
+	rootCmd.Flags().StringVarP(&inputFormat, "input", "i", "", "Input format: json, csv, tsv, psv (default: by file extension, json if unknown)")
 	rootCmd.Flags().StringVarP(&outputFormat, "output", "o", "json", "Output format: json, jsonl, csv, tsv, psv, table")
 	rootCmd.Flags().StringVarP(&queryFlag, "query", "q", "", "SQL query to execute (if omitted, interactive mode)")
 	rootCmd.Flags().BoolVar(&noHeader, "no-header", false, "Treat first row as data, not header (CSV/TSV/PSV only)")
@@ -72,6 +73,8 @@ func run(cmd *cobra.Command, args []string) error {
 	}
 	defer func() { _ = database.Close() }()
 
+	// An unset -i leaves the format to each input, so files of different
+	// formats can be joined.
 	loader := input.NewLoader(database, input.Format(inputFormat), &input.LoaderOptions{
 		NoHeader: noHeader,
 	})
@@ -96,7 +99,7 @@ func run(cmd *cobra.Command, args []string) error {
 
 // validateFormats checks if input/output formats are valid.
 func validateFormats() error {
-	if !input.IsValidFormat(inputFormat) {
+	if inputFormat != "" && !input.IsValidFormat(inputFormat) {
 		return fmt.Errorf("unsupported input format: %s (supported: %v)", inputFormat, input.Formats())
 	}
 	if !output.IsValidFormat(outputFormat) {

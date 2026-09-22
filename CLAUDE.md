@@ -21,8 +21,8 @@ Data flow: **stdin/files → `input.Loader` → `parser` → `db.DB` → `ui` or
 | Package | Role |
 | --- | --- |
 | `cmd/root.go` | Cobra entry point. Switches between TUI and CLI based on the `-q` flag |
-| `internal/input` | Reads stdin/files and dispatches to parser. Stdin always maps to table `"tmp"`; files use a sanitized filename |
-| `internal/parser` | Converts bytes to `ParsedData` (columns + rows). Parsers self-register via `init()` |
+| `internal/input` | Reads stdin/files and dispatches to parser. Resolves each file's format from its extension unless `-i` is set, and owns table naming (stdin maps to `"tmp"`, files to a sanitized filename, with `_2`, `_3`, ... on collision) |
+| `internal/parser` | Converts bytes to `ParsedData` (columns + rows) via `ParseJSONBytes` / `ParseCSVBytes` |
 | `internal/db` | In-memory SQLite via `modernc.org/sqlite` (CGO-free) |
 | `internal/ui` | Bubble Tea TUI. `TableState` implements custom horizontal column scrolling |
 | `internal/cli` | Non-interactive execution when `-q` is provided |

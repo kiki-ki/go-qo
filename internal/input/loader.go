@@ -28,7 +28,7 @@ type LoaderOptions struct {
 // Loader handles loading data into the database.
 type Loader struct {
 	db      *db.DB
-	format  Format
+	format  Format // forced format, or empty to resolve each input separately
 	options *LoaderOptions
 	used    map[string]bool // table names already taken by this loader
 }
@@ -124,7 +124,8 @@ func (l *Loader) LoadReader(r io.Reader, tableName string) (string, error) {
 		return "", fmt.Errorf("failed to read input: %w", err)
 	}
 
-	parsed, err := l.parseBytes(data)
+	// A reader carries no path, so there is no extension to resolve from.
+	parsed, err := l.parseBytes(data, l.formatFor(""))
 	if err != nil {
 		return "", fmt.Errorf("failed to parse input: %w", err)
 	}
@@ -159,10 +160,24 @@ func (l *Loader) LoadFiles(filePaths []string) ([]string, error) {
 	return tableNames, nil
 }
 
+// formatFor resolves the format to parse an input with. A forced format applies
+// to everything, so files whose extension disagrees with their contents stay
+// loadable. Otherwise the extension decides, and whatever it cannot answer for
+// is read as JSON.
+func (l *Loader) formatFor(path string) Format {
+	if l.format != "" {
+		return l.format
+	}
+	if format := FormatFromPath(path); format != "" {
+		return format
+	}
+	return FormatJSON
+}
+
 // parseBytes parses byte data based on the format.
-func (l *Loader) parseBytes(data []byte) (*parser.ParsedData, error) {
+func (l *Loader) parseBytes(data []byte, format Format) (*parser.ParsedData, error) {
 	data = stripBOM(data)
-	switch l.format {
+	switch format {
 	case FormatJSON:
 		return parser.ParseJSONBytes(data)
 	case FormatCSV:
@@ -172,7 +187,7 @@ func (l *Loader) parseBytes(data []byte) (*parser.ParsedData, error) {
 	case FormatPSV:
 		return parser.ParseCSVBytes(data, parser.CSVOptions{NoHeader: l.options.NoHeader, Delimiter: '|'})
 	default:
-		return nil, fmt.Errorf("unsupported format: %s", l.format)
+		return nil, fmt.Errorf("unsupported format: %s", format)
 	}
 }
 
@@ -182,5 +197,5 @@ func (l *Loader) parseFile(path string) (*parser.ParsedData, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to read file %s: %w", path, err)
 	}
-	return l.parseBytes(data)
+	return l.parseBytes(data, l.formatFor(path))
 }

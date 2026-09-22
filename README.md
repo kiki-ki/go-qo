@@ -84,7 +84,16 @@ Use SQL to analyze structured data.
 cat app.log | qo -q "SELECT timestamp, message FROM tmp WHERE level = 'error'"
 
 # Aggregate sales by region
-qo -i csv sales.csv -o csv -q "SELECT region, SUM(amount) FROM sales GROUP BY region"
+qo sales.csv -o csv -q "SELECT region, SUM(amount) FROM sales GROUP BY region"
+```
+
+### Mix Formats
+
+A file's format comes from its extension, so files of different formats can be joined. Reach for `-i` when an extension is missing or lying; it then applies to every input, stdin included.
+
+```bash
+qo -q "SELECT u.name, l.action FROM users u JOIN logs l ON u.id = l.uid" users.csv logs.json
+qo -i csv -q "SELECT * FROM export" export.txt
 ```
 
 ### Convert Formats
@@ -92,17 +101,17 @@ qo -i csv sales.csv -o csv -q "SELECT region, SUM(amount) FROM sales GROUP BY re
 Transform between various formats.
 
 ```bash
-qo -o csv data.json -q "SELECT id, name FROM data"             # JSON → CSV
-qo -i csv -o json users.csv -q "SELECT * FROM users"           # CSV → JSON
-qo -o jsonl data.json -q "SELECT * FROM data"                  # JSON → JSON Lines
-qo -i csv --no-header raw.csv -q "SELECT col1, col2 FROM raw"  # Headerless CSV
+qo -o csv data.json -q "SELECT id, name FROM data"      # JSON → CSV
+qo -o json users.csv -q "SELECT * FROM users"           # CSV → JSON
+qo -o jsonl data.json -q "SELECT * FROM data"           # JSON → JSON Lines
+qo --no-header raw.csv -q "SELECT col1, col2 FROM raw"  # Headerless CSV
 ```
 
 ## Options
 
 | Flag | Short | Default | Description |
 | :--- | :--- | :--- | :--- |
-| `--input` | `-i` | json | Input format: json, csv, tsv, psv ("json" includes "jsonl") |
+| `--input` | `-i` | by extension | Input format: json, csv, tsv, psv ("json" includes "jsonl"). Applies to every input when set |
 | `--output` | `-o` | json | Output format: json, jsonl, csv, tsv, psv, table |
 | `--query` | `-q` | | Run SQL query directly (Skip TUI) |
 | `--no-header` | | | Treat first row as data, not header (CSV/TSV/PSV only) |
