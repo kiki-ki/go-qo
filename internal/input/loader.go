@@ -22,14 +22,13 @@ func stripBOM(data []byte) []byte {
 
 // LoaderOptions configures loader behavior.
 type LoaderOptions struct {
-	NoHeader     bool // CSV: treat first row as data, not header
-	DetectFormat bool // Resolve each file's format from its extension
+	NoHeader bool // CSV: treat first row as data, not header
 }
 
 // Loader handles loading data into the database.
 type Loader struct {
 	db      *db.DB
-	format  Format // fallback when the format cannot be resolved from a path
+	format  Format // forced format, or empty to resolve each input separately
 	options *LoaderOptions
 	used    map[string]bool // table names already taken by this loader
 }
@@ -125,8 +124,8 @@ func (l *Loader) LoadReader(r io.Reader, tableName string) (string, error) {
 		return "", fmt.Errorf("failed to read input: %w", err)
 	}
 
-	// A reader has no path to infer from, so the explicit format is used.
-	parsed, err := l.parseBytes(data, l.format)
+	// A reader carries no path, so there is no extension to resolve from.
+	parsed, err := l.parseBytes(data, l.formatFor(""))
 	if err != nil {
 		return "", fmt.Errorf("failed to parse input: %w", err)
 	}
@@ -161,17 +160,18 @@ func (l *Loader) LoadFiles(filePaths []string) ([]string, error) {
 	return tableNames, nil
 }
 
-// formatFor resolves the format to parse a file with. The explicit format wins
-// when the user asked for one, so files whose extension disagrees with their
-// contents stay loadable.
+// formatFor resolves the format to parse an input with. A forced format applies
+// to everything, so files whose extension disagrees with their contents stay
+// loadable. Otherwise the extension decides, and whatever it cannot answer for
+// is read as JSON.
 func (l *Loader) formatFor(path string) Format {
-	if !l.options.DetectFormat {
+	if l.format != "" {
 		return l.format
 	}
-	if format, ok := FormatFromPath(path); ok {
+	if format := FormatFromPath(path); format != "" {
 		return format
 	}
-	return l.format
+	return FormatJSON
 }
 
 // parseBytes parses byte data based on the format.

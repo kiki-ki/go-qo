@@ -119,7 +119,7 @@ func TestLoadData_TableNames(t *testing.T) {
 	}
 	testutil.CloseDB(t, database)
 
-	loader := input.NewLoader(database, input.FormatJSON, &input.LoaderOptions{DetectFormat: true})
+	loader := input.NewLoader(database, "", nil)
 	cfg := &runConfig{filePaths: paths}
 
 	if err := loadData(loader, cfg, false); err != nil {

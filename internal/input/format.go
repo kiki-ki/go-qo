@@ -34,9 +34,8 @@ var formatByExt = map[string]Format{
 	".psv":    FormatPSV,
 }
 
-// FormatFromPath resolves the input format from a file extension.
-// The second return value reports whether the extension was recognized.
-func FormatFromPath(path string) (Format, bool) {
-	format, ok := formatByExt[strings.ToLower(filepath.Ext(path))]
-	return format, ok
+// FormatFromPath resolves the input format from a file extension,
+// returning an empty Format when the extension is not recognized.
+func FormatFromPath(path string) Format {
+	return formatByExt[strings.ToLower(filepath.Ext(path))]
 }
