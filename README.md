@@ -10,7 +10,7 @@
 
 > qo [cue-oh] *noun.*
 
-1. A minimalist TUI for querying JSON, CSV using SQL.
+1. TUI tool for querying JSON, CSV using SQL.
 2. **"query"** what you need, and get it **"out"** to the pipeline.
 
 <div align="center">

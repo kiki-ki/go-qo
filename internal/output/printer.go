@@ -17,7 +17,7 @@ type Options struct {
 	Output io.Writer
 }
 
-func DefaultOptions() *Options {
+func defaultOptions() *Options {
 	return &Options{
 		Format: FormatJSON,
 		Output: os.Stdout,
@@ -31,7 +31,7 @@ type Printer struct {
 // Creates a new Printer with the given options.
 func NewPrinter(opts *Options) *Printer {
 	if opts == nil {
-		opts = DefaultOptions()
+		opts = defaultOptions()
 	}
 	if opts.Output == nil {
 		opts.Output = os.Stdout
