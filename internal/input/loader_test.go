@@ -451,3 +451,48 @@ func TestLoader_LoadReader_NameCollision(t *testing.T) {
 		t.Errorf("second name = %q, want tmp_2", second)
 	}
 }
+
+func TestLoader_LoadFiles_CaseInsensitiveCollision(t *testing.T) {
+	dir := t.TempDir()
+	paths := make([]string, 0, 2)
+	// SQLite identifiers are case-insensitive, so these two basenames collide
+	// even though they differ as Go map keys.
+	for i, name := range []string{"Data.json", "data.json"} {
+		subDir := filepath.Join(dir, fmt.Sprintf("d%d", i))
+		if err := os.MkdirAll(subDir, 0o755); err != nil {
+			t.Fatalf("failed to create dir: %v", err)
+		}
+		path := filepath.Join(subDir, name)
+		if err := os.WriteFile(path, []byte(fmt.Sprintf(`[{"id": %d}]`, i)), 0o644); err != nil {
+			t.Fatalf("failed to write file: %v", err)
+		}
+		paths = append(paths, path)
+	}
+
+	database, err := db.New()
+	if err != nil {
+		t.Fatalf("failed to create db: %v", err)
+	}
+	testutil.CloseDB(t, database)
+
+	loader := input.NewLoader(database, input.FormatJSON, nil)
+	names, err := loader.LoadFiles(paths)
+	if err != nil {
+		t.Fatalf("LoadFiles failed: %v", err)
+	}
+
+	want := []string{"Data", "data_2"}
+	if !slices.Equal(names, want) {
+		t.Fatalf("names = %v, want %v", names, want)
+	}
+
+	for i, name := range names {
+		var id int
+		if err := database.QueryRow("SELECT id FROM " + name).Scan(&id); err != nil {
+			t.Fatalf("query %s failed: %v", name, err)
+		}
+		if id != i {
+			t.Errorf("table %s: id = %d, want %d", name, id, i)
+		}
+	}
+}
