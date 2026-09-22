@@ -2,6 +2,9 @@ package input_test
 
 import (
 	"bytes"
+	"fmt"
+	"os"
+	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
@@ -124,7 +127,7 @@ func TestLoader_LoadFiles(t *testing.T) {
 			testutil.CloseDB(t, database)
 
 			loader := input.NewLoader(database, tt.format, nil)
-			err = loader.LoadFiles([]string{tt.filePath})
+			_, err = loader.LoadFiles([]string{tt.filePath})
 
 			if tt.wantErr {
 				if err == nil {
@@ -172,7 +175,7 @@ func TestLoader_LoadReader(t *testing.T) {
 	reader := strings.NewReader(jsonData)
 
 	loader := input.NewLoader(database, input.FormatJSON, nil)
-	if err := loader.LoadReader(reader, "users"); err != nil {
+	if _, err := loader.LoadReader(reader, "users"); err != nil {
 		t.Fatalf("LoadReader failed: %v", err)
 	}
 
@@ -218,7 +221,7 @@ func TestLoader_LoadReader_InvalidJSON(t *testing.T) {
 
 			reader := strings.NewReader(tt.jsonData)
 			loader := input.NewLoader(database, input.FormatJSON, nil)
-			err = loader.LoadReader(reader, "test")
+			_, err = loader.LoadReader(reader, "test")
 
 			if tt.wantErr && err == nil {
 				t.Error("expected error for invalid JSON")
@@ -242,7 +245,7 @@ func TestLoader_LoadFiles_MultipleFiles(t *testing.T) {
 		testutil.JSONTestdataPath("nested.json"),
 	}
 	loader := input.NewLoader(database, input.FormatJSON, nil)
-	if err := loader.LoadFiles(paths); err != nil {
+	if _, err := loader.LoadFiles(paths); err != nil {
 		t.Fatalf("LoadFiles failed: %v", err)
 	}
 
@@ -300,7 +303,7 @@ func TestLoader_LoadReader_BOM(t *testing.T) {
 			testutil.CloseDB(t, database)
 
 			loader := input.NewLoader(database, tt.format, nil)
-			if err := loader.LoadReader(bytes.NewReader(tt.data), "test"); err != nil {
+			if _, err := loader.LoadReader(bytes.NewReader(tt.data), "test"); err != nil {
 				t.Fatalf("LoadReader failed: %v", err)
 			}
 
@@ -376,4 +379,75 @@ func TestUseStdin(t *testing.T) {
 			t.Error("expected true when stdin was explicitly requested")
 		}
 	})
+}
+
+func TestLoader_LoadFiles_NameCollision(t *testing.T) {
+	dir := t.TempDir()
+	paths := make([]string, 3)
+	for i, sub := range []string{"a", "b", "c"} {
+		subDir := filepath.Join(dir, sub)
+		if err := os.MkdirAll(subDir, 0o755); err != nil {
+			t.Fatalf("failed to create dir: %v", err)
+		}
+		path := filepath.Join(subDir, "data.json")
+		content := fmt.Sprintf(`[{"id": %d}]`, i)
+		if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+			t.Fatalf("failed to write file: %v", err)
+		}
+		paths[i] = path
+	}
+
+	database, err := db.New()
+	if err != nil {
+		t.Fatalf("failed to create db: %v", err)
+	}
+	testutil.CloseDB(t, database)
+
+	loader := input.NewLoader(database, input.FormatJSON, nil)
+	names, err := loader.LoadFiles(paths)
+	if err != nil {
+		t.Fatalf("LoadFiles failed: %v", err)
+	}
+
+	want := []string{"data", "data_2", "data_3"}
+	if !slices.Equal(names, want) {
+		t.Fatalf("names = %v, want %v", names, want)
+	}
+
+	// Each table must hold the file it came from, in argument order.
+	for i, name := range names {
+		var id int
+		if err := database.QueryRow("SELECT id FROM " + name).Scan(&id); err != nil {
+			t.Fatalf("query %s failed: %v", name, err)
+		}
+		if id != i {
+			t.Errorf("table %s: id = %d, want %d", name, id, i)
+		}
+	}
+}
+
+func TestLoader_LoadReader_NameCollision(t *testing.T) {
+	database, err := db.New()
+	if err != nil {
+		t.Fatalf("failed to create db: %v", err)
+	}
+	testutil.CloseDB(t, database)
+
+	loader := input.NewLoader(database, input.FormatJSON, nil)
+
+	first, err := loader.LoadReader(strings.NewReader(`[{"id": 1}]`), "tmp")
+	if err != nil {
+		t.Fatalf("LoadReader failed: %v", err)
+	}
+	if first != "tmp" {
+		t.Errorf("first name = %q, want tmp", first)
+	}
+
+	second, err := loader.LoadReader(strings.NewReader(`[{"id": 2}]`), "tmp")
+	if err != nil {
+		t.Fatalf("LoadReader failed: %v", err)
+	}
+	if second != "tmp_2" {
+		t.Errorf("second name = %q, want tmp_2", second)
+	}
 }

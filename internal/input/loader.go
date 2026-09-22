@@ -29,6 +29,7 @@ type Loader struct {
 	db      *db.DB
 	format  Format
 	options *LoaderOptions
+	used    map[string]bool // table names already taken by this loader
 }
 
 // NewLoader creates a new Loader.
@@ -40,6 +41,24 @@ func NewLoader(database *db.DB, format Format, options *LoaderOptions) *Loader {
 		db:      database,
 		format:  format,
 		options: options,
+		used:    make(map[string]bool),
+	}
+}
+
+// claim reserves a table name, appending a numeric suffix when the preferred
+// name is taken. Distinct files can map to the same name, for example when they
+// share a basename, and letting them collide would fail the whole run.
+func (l *Loader) claim(name string) string {
+	if !l.used[name] {
+		l.used[name] = true
+		return name
+	}
+	for i := 2; ; i++ {
+		candidate := fmt.Sprintf("%s_%d", name, i)
+		if !l.used[candidate] {
+			l.used[candidate] = true
+			return candidate
+		}
 	}
 }
 
@@ -82,45 +101,52 @@ func HasStdinData() (bool, error) {
 }
 
 // LoadStdin loads data from stdin into the database.
-func (l *Loader) LoadStdin(tableName string) error {
+// It returns the table name the data was loaded into.
+func (l *Loader) LoadStdin(tableName string) (string, error) {
 	return l.LoadReader(os.Stdin, tableName)
 }
 
 // LoadReader loads data from an io.Reader into the database.
-func (l *Loader) LoadReader(r io.Reader, tableName string) error {
+// It returns the table name the data was loaded into.
+func (l *Loader) LoadReader(r io.Reader, tableName string) (string, error) {
 	data, err := io.ReadAll(r)
 	if err != nil {
-		return fmt.Errorf("failed to read input: %w", err)
+		return "", fmt.Errorf("failed to read input: %w", err)
 	}
 
 	parsed, err := l.parseBytes(data)
 	if err != nil {
-		return fmt.Errorf("failed to parse input: %w", err)
+		return "", fmt.Errorf("failed to parse input: %w", err)
 	}
 
+	tableName = l.claim(tableName)
 	if err := l.db.LoadData(tableName, parsed); err != nil {
-		return fmt.Errorf("failed to load data: %w", err)
+		return "", fmt.Errorf("failed to load data: %w", err)
 	}
 
-	return nil
+	return tableName, nil
 }
 
 // LoadFiles loads data from files into the database.
-func (l *Loader) LoadFiles(filePaths []string) error {
+// It returns the table name each file was loaded into, in the order given.
+func (l *Loader) LoadFiles(filePaths []string) ([]string, error) {
+	tableNames := make([]string, 0, len(filePaths))
+
 	for _, path := range filePaths {
 		parsed, err := l.parseFile(path)
 		if err != nil {
-			return fmt.Errorf("failed to parse %s: %w", path, err)
+			return nil, fmt.Errorf("failed to parse %s: %w", path, err)
 		}
 
-		tableName := db.TableNameFromPath(path)
+		tableName := l.claim(db.TableNameFromPath(path))
 
 		if err := l.db.LoadData(tableName, parsed); err != nil {
-			return fmt.Errorf("failed to load table %s: %w", tableName, err)
+			return nil, fmt.Errorf("failed to load table %s: %w", tableName, err)
 		}
+		tableNames = append(tableNames, tableName)
 	}
 
-	return nil
+	return tableNames, nil
 }
 
 // parseBytes parses byte data based on the format.

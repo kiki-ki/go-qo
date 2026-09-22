@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"strings"
+	"unicode"
 
 	_ "modernc.org/sqlite"
 
@@ -84,9 +85,30 @@ func (db *DB) insertRows(tableName string, columns []parser.Column, rows [][]any
 	return nil
 }
 
-// TableNameFromPath generates a valid table name from a file path.
+// TableNameFromPath generates a table name from a file path.
+//
+// The result is usable in a query without quoting, so that the name qo reports
+// can be pasted straight into SQL. Names are not guaranteed to be unique across
+// paths; callers that load several files must resolve collisions themselves.
 func TableNameFromPath(path string) string {
 	base := filepath.Base(path)
 	name := strings.TrimSuffix(base, filepath.Ext(base))
-	return strings.NewReplacer("-", "_", " ", "_", ".", "_").Replace(name)
+
+	var b strings.Builder
+	b.Grow(len(name))
+	for _, r := range name {
+		if r == '_' || unicode.IsLetter(r) || unicode.IsDigit(r) {
+			b.WriteRune(r)
+			continue
+		}
+		b.WriteRune('_')
+	}
+	name = b.String()
+
+	// SQLite rejects an unquoted identifier that begins with a digit, and an
+	// empty name is not an identifier at all.
+	if name == "" || (name[0] >= '0' && name[0] <= '9') {
+		name = "_" + name
+	}
+	return name
 }

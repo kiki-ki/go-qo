@@ -115,19 +115,19 @@ func loadData(loader *input.Loader, cfg *runConfig, useStdin bool) error {
 	var tableNames []string
 
 	if useStdin {
-		if err := loader.LoadStdin(stdinTableName); err != nil {
+		name, err := loader.LoadStdin(stdinTableName)
+		if err != nil {
 			return err
 		}
-		tableNames = append(tableNames, stdinTableName)
+		tableNames = append(tableNames, name)
 	}
 
 	if len(cfg.filePaths) > 0 {
-		if err := loader.LoadFiles(cfg.filePaths); err != nil {
+		names, err := loader.LoadFiles(cfg.filePaths)
+		if err != nil {
 			return err
 		}
-		for _, path := range cfg.filePaths {
-			tableNames = append(tableNames, db.TableNameFromPath(path))
-		}
+		tableNames = append(tableNames, names...)
 	}
 
 	cfg.tableNames = tableNames
