@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"strings"
-	"unicode"
+	"unicode/utf8"
 
 	_ "modernc.org/sqlite"
 
@@ -97,7 +97,7 @@ func TableNameFromPath(path string) string {
 	var b strings.Builder
 	b.Grow(len(name))
 	for _, r := range name {
-		if r == '_' || unicode.IsLetter(r) || unicode.IsDigit(r) {
+		if isIdentRune(r) {
 			b.WriteRune(r)
 			continue
 		}
@@ -111,4 +111,17 @@ func TableNameFromPath(path string) string {
 		name = "_" + name
 	}
 	return name
+}
+
+// isIdentRune reports whether r may appear in an unquoted SQLite identifier.
+// SQLite's tokenizer accepts ASCII letters, digits, "_" and "$", and treats
+// every byte above ASCII as an identifier character, so any non-ASCII rune
+// qualifies. Classifying by Unicode category instead would reject combining
+// marks, mangling decomposed filenames such as the macOS form of "ガス".
+func isIdentRune(r rune) bool {
+	return r >= 'a' && r <= 'z' ||
+		r >= 'A' && r <= 'Z' ||
+		r >= '0' && r <= '9' ||
+		r == '_' || r == '$' ||
+		r >= utf8.RuneSelf
 }
