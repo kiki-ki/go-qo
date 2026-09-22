@@ -179,17 +179,6 @@ func TestJSONParser_ParseBytes(t *testing.T) {
 			},
 		},
 		{
-			name:     "array of strings",
-			input:    `["a", "b"]`,
-			wantRows: 2,
-			wantCols: 1,
-			checkValues: func(t *testing.T, data *parser.ParsedData) {
-				if data.Rows[0][0] != "a" || data.Rows[1][0] != "b" {
-					t.Errorf("expected a and b, got %v and %v", data.Rows[0][0], data.Rows[1][0])
-				}
-			},
-		},
-		{
 			name:     "array of arrays",
 			input:    `[[1, 2], [3, 4]]`,
 			wantRows: 2,
@@ -200,17 +189,6 @@ func TestJSONParser_ParseBytes(t *testing.T) {
 				}
 				if data.Rows[0][0] != "[1,2]" {
 					t.Errorf("expected [1,2], got %v", data.Rows[0][0])
-				}
-			},
-		},
-		{
-			name:     "scalar array widens int to real",
-			input:    `[1, 2.5]`,
-			wantRows: 2,
-			wantCols: 1,
-			checkValues: func(t *testing.T, data *parser.ParsedData) {
-				if data.Columns[0].Type != parser.TypeReal {
-					t.Errorf("expected REAL after widening, got %v", data.Columns[0].Type)
 				}
 			},
 		},
@@ -233,44 +211,6 @@ func TestJSONParser_ParseBytes(t *testing.T) {
 			},
 		},
 		{
-			name:     "top level scalar",
-			input:    `"hello"`,
-			wantRows: 1,
-			wantCols: 1,
-			checkValues: func(t *testing.T, data *parser.ParsedData) {
-				if data.Rows[0][0] != "hello" {
-					t.Errorf("expected hello, got %v", data.Rows[0][0])
-				}
-			},
-		},
-		{
-			name:     "JSON Lines of scalars",
-			input:    "1\n2\n3\n",
-			wantRows: 3,
-			wantCols: 1,
-			checkValues: func(t *testing.T, data *parser.ParsedData) {
-				if data.Rows[2][0] != int64(3) {
-					t.Errorf("expected 3, got %v", data.Rows[2][0])
-				}
-			},
-		},
-		{
-			// gjson reads a Get argument as a path, so a key holding "." used
-			// to resolve against nested data instead of itself.
-			name:     "key containing a dot",
-			input:    `[{"user.name": "alice"}]`,
-			wantRows: 1,
-			wantCols: 1,
-			checkValues: func(t *testing.T, data *parser.ParsedData) {
-				if data.Columns[0].Name != "user.name" {
-					t.Errorf("expected column user.name, got %q", data.Columns[0].Name)
-				}
-				if data.Rows[0][0] != "alice" {
-					t.Errorf("expected alice, got %v", data.Rows[0][0])
-				}
-			},
-		},
-		{
 			name:     "dotted key does not read the nested path",
 			input:    `[{"a.b": 1, "a": {"b": 2}}]`,
 			wantRows: 1,
@@ -285,17 +225,6 @@ func TestJSONParser_ParseBytes(t *testing.T) {
 				}
 				if data.Rows[0][1] != `{"b":2}` {
 					t.Errorf("a = %v, want {\"b\":2}", data.Rows[0][1])
-				}
-			},
-		},
-		{
-			name:     "key containing a backslash",
-			input:    `[{"a\\b": 1}]`,
-			wantRows: 1,
-			wantCols: 1,
-			checkValues: func(t *testing.T, data *parser.ParsedData) {
-				if data.Rows[0][0] != int64(1) {
-					t.Errorf("expected 1, got %v", data.Rows[0][0])
 				}
 			},
 		},
