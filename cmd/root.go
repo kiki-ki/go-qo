@@ -3,7 +3,7 @@ package cmd
 
 import (
 	"fmt"
-	"os"
+	"io"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -17,37 +17,50 @@ import (
 
 var version = "dev"
 
-var (
-	outputFormat string
-	inputFormat  string
-	queryFlag    string
-	noHeader     bool
-)
-
 const stdinTableName = "tmp"
 
-var rootCmd = &cobra.Command{
-	Version: version,
-	Use:     "qo [files...]",
-	Short:   "Query structured data with SQL",
-	Long:    "qo is a TUI/CLI tool that lets you query structured data using SQL.",
-	Example: strings.Join([]string{
-		"  qo data.json                                       # Interactive TUI mode",
-		"  cat data.json | qo                                 # Pipe to TUI, output to stdout",
-		"  cat data.json | qo - other.json                    # Read stdin alongside files",
-		`  qo -q "SELECT * FROM data" data.json               # Direct query mode`,
-		`  qo -o json data.csv -q "SELECT * FROM data"        # CSV to JSON`,
-		`  qo -q "SELECT * FROM a JOIN b" a.csv b.json        # Join across formats`,
-	}, "\n"),
-	Args: cobra.ArbitraryArgs,
-	RunE: run,
+// options holds the flag values of a single invocation. Keeping them per
+// command rather than in package state lets tests run independently.
+type options struct {
+	inputFormat  string
+	outputFormat string
+	query        string
+	noHeader     bool
 }
 
-func init() {
-	rootCmd.Flags().StringVarP(&inputFormat, "input", "i", "", "Input format: json, csv, tsv, psv (default: by file extension, json if unknown)")
-	rootCmd.Flags().StringVarP(&outputFormat, "output", "o", "json", "Output format: json, jsonl, csv, tsv, psv, table")
-	rootCmd.Flags().StringVarP(&queryFlag, "query", "q", "", "SQL query to execute (if omitted, interactive mode)")
-	rootCmd.Flags().BoolVar(&noHeader, "no-header", false, "Treat first row as data, not header (CSV/TSV/PSV only)")
+// newRootCmd builds the root command with its own flag state.
+func newRootCmd() *cobra.Command {
+	opts := &options{}
+
+	cmd := &cobra.Command{
+		Version: version,
+		Use:     "qo [files...]",
+		Short:   "Query structured data with SQL",
+		Long:    "qo is a TUI/CLI tool that lets you query structured data using SQL.",
+		Example: strings.Join([]string{
+			"  qo data.json                                       # Interactive TUI mode",
+			"  cat data.json | qo                                 # Pipe to TUI, output to stdout",
+			"  cat data.json | qo - other.json                    # Read stdin alongside files",
+			`  qo -q "SELECT * FROM data" data.json               # Direct query mode`,
+			`  qo -o json data.csv -q "SELECT * FROM data"        # CSV to JSON`,
+			`  qo -q "SELECT * FROM a JOIN b" a.csv b.json        # Join across formats`,
+		}, "\n"),
+		Args: cobra.ArbitraryArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			// Silenced here rather than on the command so that flag parsing
+			// errors, which happen before RunE, still show usage. Everything
+			// past this point is a runtime failure that usage cannot help with.
+			cmd.SilenceUsage = true
+			return run(cmd, args, opts)
+		},
+	}
+
+	cmd.Flags().StringVarP(&opts.inputFormat, "input", "i", "", "Input format: json, csv, tsv, psv (default: by file extension, json if unknown)")
+	cmd.Flags().StringVarP(&opts.outputFormat, "output", "o", "json", "Output format: json, jsonl, csv, tsv, psv, table")
+	cmd.Flags().StringVarP(&opts.query, "query", "q", "", "SQL query to execute (if omitted, interactive mode)")
+	cmd.Flags().BoolVar(&opts.noHeader, "no-header", false, "Treat first row as data, not header (CSV/TSV/PSV only)")
+
+	return cmd
 }
 
 // runConfig holds the parsed configuration for a query run.
@@ -57,13 +70,8 @@ type runConfig struct {
 	tableNames []string
 }
 
-func run(cmd *cobra.Command, args []string) error {
-	// Silenced here rather than on the command so that flag parsing errors,
-	// which happen before RunE, still show usage. Everything past this point
-	// is a runtime failure that usage cannot help with.
-	cmd.SilenceUsage = true
-
-	if err := validateFormats(); err != nil {
+func run(cmd *cobra.Command, args []string, opts *options) error {
+	if err := validateFormats(opts); err != nil {
 		return err
 	}
 
@@ -75,8 +83,8 @@ func run(cmd *cobra.Command, args []string) error {
 
 	// An unset -i leaves the format to each input, so files of different
 	// formats can be joined.
-	loader := input.NewLoader(database, input.Format(inputFormat), &input.LoaderOptions{
-		NoHeader: noHeader,
+	loader := input.NewLoader(database, input.Format(opts.inputFormat), &input.LoaderOptions{
+		NoHeader: opts.noHeader,
 	})
 
 	filePaths, stdinRequested := input.SplitArgs(args)
@@ -86,7 +94,7 @@ func run(cmd *cobra.Command, args []string) error {
 	}
 
 	cfg := &runConfig{
-		query:     queryFlag,
+		query:     opts.query,
 		filePaths: filePaths,
 	}
 
@@ -94,16 +102,16 @@ func run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	return execute(database, cfg)
+	return execute(database, cfg, opts, cmd.OutOrStdout())
 }
 
 // validateFormats checks if input/output formats are valid.
-func validateFormats() error {
-	if inputFormat != "" && !input.IsValidFormat(inputFormat) {
-		return fmt.Errorf("unsupported input format: %s (supported: %v)", inputFormat, input.Formats())
+func validateFormats(opts *options) error {
+	if opts.inputFormat != "" && !input.IsValidFormat(opts.inputFormat) {
+		return fmt.Errorf("unsupported input format: %s (supported: %v)", opts.inputFormat, input.Formats())
 	}
-	if !output.IsValidFormat(outputFormat) {
-		return fmt.Errorf("unsupported output format: %s (supported: %v)", outputFormat, output.Formats())
+	if !output.IsValidFormat(opts.outputFormat) {
+		return fmt.Errorf("unsupported output format: %s (supported: %v)", opts.outputFormat, output.Formats())
 	}
 	return nil
 }
@@ -139,7 +147,7 @@ func loadData(loader *input.Loader, cfg *runConfig, useStdin bool) error {
 
 // execute runs either UI or CLI mode based on configuration.
 // UI mode is used when query is empty, CLI mode when query is provided via -q flag.
-func execute(database *db.DB, cfg *runConfig) error {
+func execute(database *db.DB, cfg *runConfig, opts *options, out io.Writer) error {
 	if cfg.query == "" {
 		result, err := ui.Run(database.DB, cfg.tableNames)
 		if err != nil {
@@ -151,11 +159,11 @@ func execute(database *db.DB, cfg *runConfig) error {
 		cfg.query = result.Query
 	}
 	return cli.Run(database.DB, cfg.query, &cli.Options{
-		Format: output.Format(outputFormat),
-		Output: os.Stdout,
+		Format: output.Format(opts.outputFormat),
+		Output: out,
 	})
 }
 
 func Execute() error {
-	return rootCmd.Execute()
+	return newRootCmd().Execute()
 }
