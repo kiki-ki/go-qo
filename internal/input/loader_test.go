@@ -472,7 +472,7 @@ func TestLoader_LoadFiles_DetectFormat(t *testing.T) {
 		}
 		testutil.CloseDB(t, database)
 
-		loader := input.NewLoader(database, input.FormatJSON, &input.LoaderOptions{DetectFormat: true})
+		loader := input.NewLoader(database, "", nil)
 		if _, err := loader.LoadFiles([]string{csvPath, jsonPath}); err != nil {
 			t.Fatalf("LoadFiles failed: %v", err)
 		}
@@ -487,14 +487,14 @@ func TestLoader_LoadFiles_DetectFormat(t *testing.T) {
 		}
 	})
 
-	t.Run("unknown extension falls back to the given format", func(t *testing.T) {
+	t.Run("unknown extension falls back to JSON", func(t *testing.T) {
 		database, err := db.New()
 		if err != nil {
 			t.Fatalf("failed to create db: %v", err)
 		}
 		testutil.CloseDB(t, database)
 
-		loader := input.NewLoader(database, input.FormatJSON, &input.LoaderOptions{DetectFormat: true})
+		loader := input.NewLoader(database, "", nil)
 		if _, err := loader.LoadFiles([]string{unknownPath}); err != nil {
 			t.Fatalf("LoadFiles failed: %v", err)
 		}
@@ -515,8 +515,9 @@ func TestLoader_LoadFiles_DetectFormat(t *testing.T) {
 		}
 		testutil.CloseDB(t, database)
 
-		// DetectFormat off means the CSV file must be parsed as JSON and fail.
-		loader := input.NewLoader(database, input.FormatJSON, &input.LoaderOptions{DetectFormat: false})
+		// A forced format must win over the extension, so the CSV file is
+		// parsed as JSON and fails.
+		loader := input.NewLoader(database, input.FormatJSON, nil)
 		if _, err := loader.LoadFiles([]string{csvPath}); err == nil {
 			t.Error("expected error when parsing CSV as JSON, got nil")
 		}

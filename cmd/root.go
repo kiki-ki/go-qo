@@ -32,12 +32,12 @@ var rootCmd = &cobra.Command{
 	Short:   "Query structured data with SQL",
 	Long:    "qo is a TUI/CLI tool that lets you query structured data using SQL.",
 	Example: strings.Join([]string{
-		"  qo data.json                                        # Interactive TUI mode",
-		"  cat data.json | qo                                  # Pipe to TUI, output to stdout",
-		"  cat data.json | qo - other.json                     # Read stdin alongside files",
-		`  qo -q "SELECT * FROM a JOIN b ..." a.csv b.json     # Mixed input formats`,
-		`  qo -q "SELECT * FROM data" data.json                # Direct query mode`,
-		`  qo -i csv -o json data.csv -q "SELECT * FROM data"  # CSV to JSON`,
+		"  qo data.json                                       # Interactive TUI mode",
+		"  cat data.json | qo                                 # Pipe to TUI, output to stdout",
+		"  cat data.json | qo - other.json                    # Read stdin alongside files",
+		`  qo -q "SELECT * FROM data" data.json               # Direct query mode`,
+		`  qo -o json data.csv -q "SELECT * FROM data"        # CSV to JSON`,
+		`  qo -q "SELECT * FROM a JOIN b" a.csv b.json        # Join across formats`,
 	}, "\n"),
 	Args: cobra.ArbitraryArgs,
 	RunE: run,
@@ -73,17 +73,10 @@ func run(cmd *cobra.Command, args []string) error {
 	}
 	defer func() { _ = database.Close() }()
 
-	// An explicit -i applies to every input; otherwise each file's extension
-	// decides, so mixed-format inputs can be joined. An empty -i is what makes
-	// cobra omit a default from --help, so it doubles as the "not set" signal.
-	format, detect := input.Format(inputFormat), inputFormat == ""
-	if detect {
-		format = input.FormatJSON
-	}
-
-	loader := input.NewLoader(database, format, &input.LoaderOptions{
-		NoHeader:     noHeader,
-		DetectFormat: detect,
+	// An unset -i leaves the format to each input, so files of different
+	// formats can be joined.
+	loader := input.NewLoader(database, input.Format(inputFormat), &input.LoaderOptions{
+		NoHeader: noHeader,
 	})
 
 	filePaths, stdinRequested := input.SplitArgs(args)
