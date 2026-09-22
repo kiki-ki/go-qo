@@ -4,7 +4,6 @@ package testutil
 import (
 	"database/sql"
 	"io"
-	"os"
 	"path/filepath"
 	"runtime"
 	"testing"
@@ -23,31 +22,21 @@ func SetupTestDB(t *testing.T) *sql.DB {
 	return db
 }
 
-// CreateTempJSON creates a temporary JSON file with the given content.
-func CreateTempJSON(t *testing.T, content string) string {
-	t.Helper()
-	path := filepath.Join(t.TempDir(), "test.json")
-	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
-		t.Fatalf("failed to create temp file: %v", err)
-	}
-	return path
-}
-
-// TestdataPath returns the absolute path to a file in the testdata directory.
+// testdataPath returns the absolute path to a file in the testdata directory.
 // Use format subdirectories like "json/users.json".
-func TestdataPath(filename string) string {
+func testdataPath(filename string) string {
 	_, file, _, _ := runtime.Caller(0)
 	return filepath.Join(filepath.Dir(file), "..", "..", "testdata", filename)
 }
 
 // JSONTestdataPath returns the absolute path to a JSON file in testdata/json.
 func JSONTestdataPath(filename string) string {
-	return TestdataPath(filepath.Join("json", filename))
+	return testdataPath(filepath.Join("json", filename))
 }
 
 // CSVTestdataPath returns the absolute path to a CSV file in testdata/csv.
 func CSVTestdataPath(filename string) string {
-	return TestdataPath(filepath.Join("csv", filename))
+	return testdataPath(filepath.Join("csv", filename))
 }
 
 // CloseDB registers a cleanup function to close the database when the test completes.
