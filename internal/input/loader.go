@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 
 	"github.com/kiki-ki/go-qo/internal/db"
 	"github.com/kiki-ki/go-qo/internal/parser"
@@ -50,14 +51,23 @@ func NewLoader(database *db.DB, format Format, options *LoaderOptions) *Loader {
 // name is taken. Distinct files can map to the same name, for example when they
 // share a basename, and letting them collide would fail the whole run.
 func (l *Loader) claim(name string) string {
-	if !l.used[name] {
-		l.used[name] = true
+	// SQLite identifiers are case-insensitive, so names differing only in case
+	// would pass a case-sensitive check here and still collide at CREATE TABLE.
+	take := func(candidate string) bool {
+		key := strings.ToLower(candidate)
+		if l.used[key] {
+			return false
+		}
+		l.used[key] = true
+		return true
+	}
+
+	if take(name) {
 		return name
 	}
 	for i := 2; ; i++ {
 		candidate := fmt.Sprintf("%s_%d", name, i)
-		if !l.used[candidate] {
-			l.used[candidate] = true
+		if take(candidate) {
 			return candidate
 		}
 	}

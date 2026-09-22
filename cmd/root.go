@@ -55,7 +55,7 @@ func newRootCmd() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVarP(&opts.inputFormat, "input", "i", "json", "Input format: json, csv, tsv, psv (default: by file extension)")
+	cmd.Flags().StringVarP(&opts.inputFormat, "input", "i", "", "Input format: json, csv, tsv, psv (default: by file extension, json if unknown)")
 	cmd.Flags().StringVarP(&opts.outputFormat, "output", "o", "json", "Output format: json, jsonl, csv, tsv, psv, table")
 	cmd.Flags().StringVarP(&opts.query, "query", "q", "", "SQL query to execute (if omitted, interactive mode)")
 	cmd.Flags().BoolVar(&opts.noHeader, "no-header", false, "Treat first row as data, not header (CSV/TSV/PSV only)")
@@ -81,11 +81,17 @@ func run(cmd *cobra.Command, args []string, opts *options) error {
 	}
 	defer func() { _ = database.Close() }()
 
-	loader := input.NewLoader(database, input.Format(opts.inputFormat), &input.LoaderOptions{
-		NoHeader: opts.noHeader,
-		// An explicit -i applies to every file; otherwise each file's
-		// extension decides, so mixed-format inputs can be joined.
-		DetectFormat: !cmd.Flags().Changed("input"),
+	// An explicit -i applies to every input; otherwise each file's extension
+	// decides, so mixed-format inputs can be joined. An empty -i is what makes
+	// cobra omit a default from --help, so it doubles as the "not set" signal.
+	format, detect := input.Format(opts.inputFormat), opts.inputFormat == ""
+	if detect {
+		format = input.FormatJSON
+	}
+
+	loader := input.NewLoader(database, format, &input.LoaderOptions{
+		NoHeader:     opts.noHeader,
+		DetectFormat: detect,
 	})
 
 	filePaths, stdinRequested := input.SplitArgs(args)
@@ -108,7 +114,7 @@ func run(cmd *cobra.Command, args []string, opts *options) error {
 
 // validateFormats checks if input/output formats are valid.
 func validateFormats(opts *options) error {
-	if !input.IsValidFormat(opts.inputFormat) {
+	if opts.inputFormat != "" && !input.IsValidFormat(opts.inputFormat) {
 		return fmt.Errorf("unsupported input format: %s (supported: %v)", opts.inputFormat, input.Formats())
 	}
 	if !output.IsValidFormat(opts.outputFormat) {
