@@ -23,6 +23,11 @@ archives:
       - LICENSE
       - README.md
 
+release:
+  # Re-running a release replaces its artifacts instead of failing on the
+  # names that are already uploaded.
+  mode: replace
+
 # deprecated brews in goreleaser.
 # ref: https://goreleaser.com/deprecations/#brews
 brews:
