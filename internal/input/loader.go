@@ -10,8 +10,8 @@ import (
 	"github.com/kiki-ki/go-qo/internal/parser"
 )
 
-// StdinArg is the conventional CLI marker asking to read standard input.
-const StdinArg = "-"
+// stdinArg is the conventional CLI marker asking to read standard input.
+const stdinArg = "-"
 
 var utf8BOM = []byte{0xEF, 0xBB, 0xBF}
 
@@ -43,10 +43,10 @@ func NewLoader(database *db.DB, format Format, options *LoaderOptions) *Loader {
 	}
 }
 
-// SplitArgs separates the StdinArg marker from file paths.
+// SplitArgs separates the "-" stdin marker from file paths.
 func SplitArgs(args []string) (filePaths []string, stdinRequested bool) {
 	for _, arg := range args {
-		if arg == StdinArg {
+		if arg == stdinArg {
 			stdinRequested = true
 			continue
 		}
@@ -57,10 +57,10 @@ func SplitArgs(args []string) (filePaths []string, stdinRequested bool) {
 
 // UseStdin reports whether stdin should be read for the given arguments.
 //
-// stdin is probed only when there is nothing else to read. HasStdinData cannot
+// stdin is probed only when there is nothing else to read. The probe cannot
 // tell an empty pipe from one that simply has not received data yet, so probing
 // it while file arguments are present would risk blocking on a pipe that never
-// reaches EOF. Pass StdinArg to read stdin alongside files.
+// reaches EOF. Pass "-" to read stdin alongside files.
 func UseStdin(filePaths []string, stdinRequested bool) (bool, error) {
 	if stdinRequested {
 		return true, nil
@@ -68,12 +68,12 @@ func UseStdin(filePaths []string, stdinRequested bool) (bool, error) {
 	if len(filePaths) > 0 {
 		return false, nil
 	}
-	return HasStdinData()
+	return hasStdinData()
 }
 
-// HasStdinData reports whether stdin is something other than a terminal.
+// hasStdinData reports whether stdin is something other than a terminal.
 // It cannot tell whether that source actually carries data; see UseStdin.
-func HasStdinData() (bool, error) {
+func hasStdinData() (bool, error) {
 	stat, err := os.Stdin.Stat()
 	if err != nil {
 		return false, fmt.Errorf("failed to stat stdin: %w", err)
