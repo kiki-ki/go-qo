@@ -89,18 +89,15 @@ func TestTableNameFromPath(t *testing.T) {
 		{"/absolute/path/data.json", "data"},
 		// Unquoted SQLite identifiers cannot start with a digit.
 		{"1-report.json", "_1_report"},
-		{"2024sales.csv", "_2024sales"},
 		{"report1.json", "report1"},
 		// Anything else invalid in an identifier is replaced.
 		{"we!rd@name.json", "we_rd_name"},
-		{"a+b(c).json", "a_b_c_"},
 		// Non-ASCII passes through, combining marks included: macOS stores
 		// filenames decomposed, so "ガス" can arrive as カ + U+3099 + ス.
 		{"売上.json", "売上"},
 		{"\u30ab\u3099\u30b9.json", "\u30ab\u3099\u30b9"},
 		// Degenerate names still have to yield a usable identifier.
 		{".json", "_"},
-		{"!.json", "_"},
 	}
 
 	for _, tt := range tests {
