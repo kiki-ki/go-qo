@@ -48,7 +48,7 @@ git clone --depth 1 https://github.com/kiki-ki/go-qo.git && cd go-qo && make bui
 
 ## Usage
 
-**qo** reads from file arguments, or from standard input (stdin) when no files are given.
+**qo** reads from file arguments, or from stdin when no files are given. Each file becomes a table named after it; stdin becomes `tmp`.
 
 ```bash
 # Interactive mode (Open TUI)
@@ -58,11 +58,8 @@ qo x.json y.json
 # Non-interactive mode (Direct output)
 cat x.json | qo -q "SELECT * FROM tmp WHERE id > 100"
 qo -q "SELECT * FROM x JOIN y ON x.id = y.x_id" x.json y.json
-```
 
-Stdin is loaded as the table `tmp`. To read stdin *alongside* files, pass `-` explicitly.
-
-```bash
+# Pass - to read stdin alongside files
 cat x.json | qo - y.json -q "SELECT * FROM tmp JOIN y ON tmp.id = y.tmp_id"
 ```
 
@@ -92,16 +89,11 @@ qo sales.csv -o csv -q "SELECT region, SUM(amount) FROM sales GROUP BY region"
 
 ### Mix Formats
 
-Each file's format is inferred from its extension, so inputs of different formats can be joined.
+Each file's format comes from its extension, so different formats can be joined. `-i` overrides that for every input, including stdin.
 
 ```bash
 qo -q "SELECT u.name, l.action FROM users u JOIN logs l ON u.id = l.uid" users.csv logs.json
-```
-
-Pass `-i` to force one format for every input, for files whose extension does not match their contents.
-
-```bash
-qo -i csv -q "SELECT * FROM export" export.txt
+qo -i csv -q "SELECT * FROM export" export.txt  # extension says nothing useful
 ```
 
 ### Convert Formats
