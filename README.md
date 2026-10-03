@@ -33,6 +33,12 @@ macOS and Linux (amd64/arm64) are supported.
 brew install kiki-ki/tap/qo
 ```
 
+**mise**
+
+```bash
+mise use -g github:kiki-ki/go-qo
+```
+
 **Shell (Binary)**
 
 ```bash
