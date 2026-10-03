@@ -27,7 +27,7 @@
 
 macOS and Linux (amd64/arm64) are supported.
 
-**Homebrew (Package)**
+**Homebrew (macOS)**
 
 ```bash
 brew install kiki-ki/tap/qo

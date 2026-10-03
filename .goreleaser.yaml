@@ -28,18 +28,20 @@ release:
   # names that are already uploaded.
   mode: replace
 
-# deprecated brews in goreleaser.
-# ref: https://goreleaser.com/deprecations/#brews
-brews:
+homebrew_casks:
   - repository:
       owner: kiki-ki
       name: homebrew-tap
       token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
-    directory: Formula
+    directory: Casks
     homepage: https://github.com/kiki-ki/go-qo
     description: "Query JSON data with SQL"
-    install: |
-      bin.install "qo"
+    hooks:
+      post:
+        install: |
+          if OS.mac?
+            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/qo"]
+          end
 
 changelog:
   use: github-native
