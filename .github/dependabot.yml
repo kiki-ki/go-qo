@@ -8,7 +8,28 @@ updates:
       day: "saturday"
       time: "09:00"
       timezone: "Asia/Tokyo"
+    # go.mod marks tool modules as indirect, which Dependabot skips unless they are allowed by name.
+    allow:
+      - dependency-type: "direct"
+      - dependency-name: "github.com/golangci/golangci-lint/v2"
+        dependency-type: "all"
+      - dependency-name: "github.com/goreleaser/goreleaser/v2"
+        dependency-type: "all"
+      - dependency-name: "golang.org/x/tools/cmd/godoc"
+        dependency-type: "all"
+      - dependency-name: "golang.org/x/vuln"
+        dependency-type: "all"
     groups:
+      # Kept apart so that a tool bump failing CI (e.g. new lint findings) does not block library updates.
+      tools:
+        patterns:
+          - "github.com/golangci/golangci-lint/v2"
+          - "github.com/goreleaser/goreleaser/v2"
+          - "golang.org/x/tools/cmd/godoc"
+          - "golang.org/x/vuln"
+        update-types:
+          - "minor"
+          - "patch"
       minor-patch:
         patterns:
           - "*"
