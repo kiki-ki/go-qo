@@ -57,7 +57,7 @@ releaser-dryrun: ## run goreleaser dry-run
 
 .PHONY: goreleaser-version
 goreleaser-version: ## print the goreleaser version pinned in tools/go.mod
-	@go list $(TOOLS_MODFILE) -m -f '{{.Version}}' github.com/goreleaser/goreleaser/v2
+	@go mod edit -json tools/go.mod | jq -er '.Require[] | select(.Path == "github.com/goreleaser/goreleaser/v2") | .Version'
 
 .PHONY: demo
 demo: build ## generate demo GIF
