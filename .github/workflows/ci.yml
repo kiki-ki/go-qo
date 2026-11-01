@@ -28,6 +28,10 @@ jobs:
         with:
           go-version-file: go.mod
           cache: true
+          # A separate cache key from the other jobs, so the cache saved here includes the tools.
+          cache-dependency-path: |
+            go.sum
+            tools/go.sum
       - name: Install tools
         run: make install-tool
       - name: Check format & tidy
