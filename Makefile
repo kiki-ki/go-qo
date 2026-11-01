@@ -55,6 +55,10 @@ releaser-check: ## run goreleaser check
 releaser-dryrun: ## run goreleaser dry-run
 	go tool $(TOOLS_MODFILE) goreleaser release --snapshot --clean
 
+.PHONY: goreleaser-version
+goreleaser-version: ## print the goreleaser version pinned in tools/go.mod
+	@go list $(TOOLS_MODFILE) -m -f '{{.Version}}' github.com/goreleaser/goreleaser/v2
+
 .PHONY: demo
 demo: build ## generate demo GIF
 	cd doc/demo && vhs demo.tape
