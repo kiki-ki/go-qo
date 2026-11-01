@@ -5,7 +5,6 @@ go 1.27.3
 tool (
 	github.com/golangci/golangci-lint/v2/cmd/golangci-lint
 	github.com/goreleaser/goreleaser/v2
-	golang.org/x/tools/cmd/godoc
 	golang.org/x/vuln/cmd/govulncheck
 )
 
@@ -446,7 +445,6 @@ require (
 	github.com/yeya24/promlinter v0.3.0 // indirect
 	github.com/ykadowak/zerologlint v0.1.5 // indirect
 	github.com/youmark/pkcs8 v0.0.0-20240726163527-a2c0da244d78 // indirect
-	github.com/yuin/goldmark v1.7.13 // indirect
 	gitlab.com/bosi/decorder v0.4.2 // indirect
 	gitlab.com/digitalxero/go-conventional-commit v1.0.7 // indirect
 	gitlab.com/gitlab-org/api/client-go v1.46.0 // indirect
@@ -485,8 +483,6 @@ require (
 	golang.org/x/text v0.43.0 // indirect
 	golang.org/x/time v0.15.0 // indirect
 	golang.org/x/tools v0.52.0 // indirect
-	golang.org/x/tools/cmd/godoc v0.1.0-deprecated // indirect
-	golang.org/x/tools/godoc v0.1.0-deprecated // indirect
 	golang.org/x/vuln v1.1.4 // indirect
 	golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da // indirect
 	google.golang.org/api v0.293.0 // indirect

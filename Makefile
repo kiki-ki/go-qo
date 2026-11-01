@@ -59,10 +59,6 @@ releaser-dryrun: ## run goreleaser dry-run
 demo: build ## generate demo GIF
 	cd doc/demo && vhs demo.tape
 
-.PHONY: doc
-doc: ## open godoc in browser
-	go tool $(TOOLS_MODFILE) godoc & (sleep 1 && open http://localhost:6060/pkg/github.com/kiki-ki/go-qo/)
-
 .PHONY: help
 help: ## list up commands
 	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
