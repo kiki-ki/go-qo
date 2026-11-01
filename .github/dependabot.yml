@@ -16,6 +16,33 @@ updates:
           - "minor"
           - "patch"
 
+  # Tool modules are recorded as indirect, which Dependabot skips unless allowed by name.
+  # Their own dependencies stay at the versions the tools require.
+  - package-ecosystem: "gomod"
+    directory: "/tools"
+    schedule:
+      interval: "weekly"
+      day: "saturday"
+      time: "09:00"
+      timezone: "Asia/Tokyo"
+    # The release workflow runs goreleaser with repository secrets, so wait for a hijacked release to be caught and pulled first.
+    cooldown:
+      default-days: 7
+    allow:
+      - dependency-name: "github.com/golangci/golangci-lint/v2"
+        dependency-type: "all"
+      - dependency-name: "github.com/goreleaser/goreleaser/v2"
+        dependency-type: "all"
+      - dependency-name: "golang.org/x/vuln"
+        dependency-type: "all"
+    groups:
+      tools:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
