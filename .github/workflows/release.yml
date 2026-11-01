@@ -24,7 +24,9 @@ jobs:
           cache: true
       - name: Read GoReleaser version
         id: goreleaser-version
-        run: echo "version=$(make -s goreleaser-version)" >> "$GITHUB_OUTPUT"
+        run: |
+          version=$(make -s goreleaser-version)
+          echo "version=$version" >> "$GITHUB_OUTPUT"
       - name: Run GoReleaser
         id: goreleaser
         uses: goreleaser/goreleaser-action@a4f02ab5355a589de60d917a659ce617ed19b3de # v7.3.0
