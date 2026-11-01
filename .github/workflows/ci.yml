@@ -28,6 +28,10 @@ jobs:
         with:
           go-version-file: go.mod
           cache: true
+          # A separate cache key from the other jobs, so the cache saved here includes the tools.
+          cache-dependency-path: |
+            go.sum
+            tools/go.sum
       - name: Install tools
         run: make install-tool
       - name: Check format & tidy
@@ -50,8 +54,16 @@ jobs:
         with:
           go-version-file: go.mod
           cache: true
+      - name: Read GoReleaser version
+        id: goreleaser-version
+        run: |
+          version=$(make -s goreleaser-version)
+          echo "version=$version" >> "$GITHUB_OUTPUT"
       - name: Run GoReleaser (dry-run)
-        run: make releaser-dryrun
+        uses: goreleaser/goreleaser-action@a4f02ab5355a589de60d917a659ce617ed19b3de # v7.3.0
+        with:
+          version: ${{ steps.goreleaser-version.outputs.version }}
+          args: release --snapshot --clean
 
   status-check:
     runs-on: ubuntu-latest

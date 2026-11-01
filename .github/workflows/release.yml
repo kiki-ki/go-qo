@@ -22,11 +22,16 @@ jobs:
         with:
           go-version-file: go.mod
           cache: true
+      - name: Read GoReleaser version
+        id: goreleaser-version
+        run: |
+          version=$(make -s goreleaser-version)
+          echo "version=$version" >> "$GITHUB_OUTPUT"
       - name: Run GoReleaser
         id: goreleaser
         uses: goreleaser/goreleaser-action@a4f02ab5355a589de60d917a659ce617ed19b3de # v7.3.0
         with:
-          version: latest
+          version: ${{ steps.goreleaser-version.outputs.version }}
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

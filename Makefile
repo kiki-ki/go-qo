@@ -3,6 +3,7 @@
 BINARY_NAME := bin/qo
 VERSION := $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
 LDFLAGS := -ldflags "-X github.com/kiki-ki/go-qo/cmd.version=$(VERSION)"
+TOOLS_MODFILE := -modfile=tools/go.mod
 
 .PHONY: build
 build: ## build the binary
@@ -24,15 +25,16 @@ fmt: ## format code
 .PHONY: lint
 lint: ## run linter (go vet & golangci-lint)
 	go vet ./...
-	go tool golangci-lint run
+	go tool $(TOOLS_MODFILE) golangci-lint run
 
 .PHONY: vuln
 vuln: ## run vulnerability check
-	go tool govulncheck ./...
+	go tool $(TOOLS_MODFILE) govulncheck ./...
 
 .PHONY: tidy
 tidy: ## run go mod tidy
 	go mod tidy
+	cd tools && go mod tidy
 
 .PHONY: check
 check: tidy fmt lint vuln ## tidy, format, lint and security check
@@ -43,23 +45,23 @@ clean: ## remove build artifacts
 
 .PHONY: install-tool
 install-tool: ## install development tools
-	go install tool
+	go install $(TOOLS_MODFILE) tool
 
 .PHONY: releaser-check
 releaser-check: ## run goreleaser check
-	go tool goreleaser check
+	go tool $(TOOLS_MODFILE) goreleaser check
 
 .PHONY: releaser-dryrun
 releaser-dryrun: ## run goreleaser dry-run
-	go tool goreleaser release --snapshot --clean
+	go tool $(TOOLS_MODFILE) goreleaser release --snapshot --clean
+
+.PHONY: goreleaser-version
+goreleaser-version: ## print the goreleaser version pinned in tools/go.mod
+	@go mod edit -json tools/go.mod | jq -er '.Require[] | select(.Path == "github.com/goreleaser/goreleaser/v2") | .Version'
 
 .PHONY: demo
 demo: build ## generate demo GIF
 	cd doc/demo && vhs demo.tape
-
-.PHONY: doc
-doc: ## open godoc in browser
-	go tool godoc & (sleep 1 && open http://localhost:6060/pkg/github.com/kiki-ki/go-qo/)
 
 .PHONY: help
 help: ## list up commands
