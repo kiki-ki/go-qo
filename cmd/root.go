@@ -26,6 +26,7 @@ type options struct {
 	outputFormat string
 	query        string
 	noHeader     bool
+	printCommand bool
 }
 
 // newRootCmd builds the root command with its own flag state.
@@ -59,6 +60,7 @@ func newRootCmd() *cobra.Command {
 	cmd.Flags().StringVarP(&opts.outputFormat, "output", "o", "json", "Output format: json, jsonl, csv, tsv, psv, table")
 	cmd.Flags().StringVarP(&opts.query, "query", "q", "", "SQL query to execute (if omitted, interactive mode)")
 	cmd.Flags().BoolVar(&opts.noHeader, "no-header", false, "Treat first row as data, not header (CSV/TSV/PSV only)")
+	cmd.Flags().BoolVar(&opts.printCommand, "print-command", false, "Print equivalent CLI command to stderr upon exit")
 
 	return cmd
 }
@@ -102,7 +104,7 @@ func run(cmd *cobra.Command, args []string, opts *options) error {
 		return err
 	}
 
-	return execute(database, cfg, opts, cmd.OutOrStdout())
+	return execute(database, cfg, opts, cmd.OutOrStdout(), cmd.ErrOrStderr(), useStdin)
 }
 
 // validateFormats checks if input/output formats are valid.
@@ -147,7 +149,7 @@ func loadData(loader *input.Loader, cfg *runConfig, useStdin bool) error {
 
 // execute runs either UI or CLI mode based on configuration.
 // UI mode is used when query is empty, CLI mode when query is provided via -q flag.
-func execute(database *db.DB, cfg *runConfig, opts *options, out io.Writer) error {
+func execute(database *db.DB, cfg *runConfig, opts *options, out, errOut io.Writer, useStdin bool) error {
 	if cfg.query == "" {
 		result, err := ui.Run(database.DB, cfg.tableNames)
 		if err != nil {
@@ -158,10 +160,70 @@ func execute(database *db.DB, cfg *runConfig, opts *options, out io.Writer) erro
 		}
 		cfg.query = result.Query
 	}
-	return cli.Run(database.DB, cfg.query, &cli.Options{
+	if err := cli.Run(database.DB, cfg.query, &cli.Options{
 		Format: output.Format(opts.outputFormat),
 		Output: out,
-	})
+	}); err != nil {
+		return err
+	}
+
+	if opts.printCommand && !useStdin && len(cfg.filePaths) > 0 {
+		fmt.Fprintln(errOut, formatCLICommand(cfg, opts))
+	}
+	return nil
+}
+
+// formatCLICommand formats the executed query and input files as an equivalent non-interactive CLI command.
+func formatCLICommand(cfg *runConfig, opts *options) string {
+	parts := []string{"qo"}
+	if opts.inputFormat != "" {
+		parts = append(parts, "-i", quoteArg(opts.inputFormat))
+	}
+	if opts.outputFormat != "" && opts.outputFormat != string(output.FormatJSON) {
+		parts = append(parts, "-o", quoteArg(opts.outputFormat))
+	}
+	if opts.noHeader {
+		parts = append(parts, "--no-header")
+	}
+	parts = append(parts, "-q", quoteQuery(cfg.query))
+	for _, p := range cfg.filePaths {
+		parts = append(parts, quoteArg(p))
+	}
+	return strings.Join(parts, " ")
+}
+
+// quoteQuery wraps the SQL query in double quotes and escapes special shell characters.
+func quoteQuery(q string) string {
+	escaped := strings.ReplaceAll(q, `\`, `\\`)
+	escaped = strings.ReplaceAll(escaped, `"`, `\"`)
+	escaped = strings.ReplaceAll(escaped, `$`, `\$`)
+	escaped = strings.ReplaceAll(escaped, "`", "\\`")
+	return `"` + escaped + `"`
+}
+
+// quoteArg quotes an argument if it contains whitespace or shell-sensitive characters.
+func quoteArg(s string) string {
+	if isSafeArg(s) {
+		return s
+	}
+	escaped := strings.ReplaceAll(s, `\`, `\\`)
+	escaped = strings.ReplaceAll(escaped, `"`, `\"`)
+	escaped = strings.ReplaceAll(escaped, `$`, `\$`)
+	escaped = strings.ReplaceAll(escaped, "`", "\\`")
+	return `"` + escaped + `"`
+}
+
+// isSafeArg checks whether a string contains only safe path and identifier characters.
+func isSafeArg(s string) bool {
+	if s == "" {
+		return false
+	}
+	for _, r := range s {
+		if !((r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '_' || r == '-' || r == '.' || r == '/') {
+			return false
+		}
+	}
+	return true
 }
 
 func Execute() error {

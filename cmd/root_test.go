@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bytes"
+	"fmt"
 	"os"
 	"path/filepath"
 	"slices"
@@ -236,4 +237,174 @@ func TestRootCmd_InputFormat(t *testing.T) {
 			t.Errorf("output = %q", out)
 		}
 	})
+}
+
+func runCmdWithStreams(t *testing.T, args ...string) (string, string, error) {
+	t.Helper()
+
+	var stdout, stderr bytes.Buffer
+	cmd := newRootCmd()
+	cmd.SetOut(&stdout)
+	cmd.SetErr(&stderr)
+	cmd.SetArgs(args)
+
+	err := cmd.Execute()
+	return stdout.String(), stderr.String(), err
+}
+
+func TestRootCmd_PrintCommand(t *testing.T) {
+	t.Parallel()
+
+	jsonPath := writeFile(t, "users.json", `[{"id": 1, "name": "alice"}]`)
+
+	t.Run("disabled by default", func(t *testing.T) {
+		t.Parallel()
+
+		stdout, stderr, err := runCmdWithStreams(t, "-q", "SELECT name FROM users", jsonPath)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if stderr != "" {
+			t.Errorf("stderr = %q, want empty", stderr)
+		}
+		if !strings.Contains(stdout, "alice") {
+			t.Errorf("stdout = %q, want it to contain alice", stdout)
+		}
+	})
+
+	t.Run("prints command to stderr without polluting stdout", func(t *testing.T) {
+		t.Parallel()
+
+		stdout, stderr, err := runCmdWithStreams(t, "--print-command", "-q", "SELECT name FROM users", jsonPath)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		wantCmd := fmt.Sprintf("qo -q \"SELECT name FROM users\" %s\n", jsonPath)
+		if stderr != wantCmd {
+			t.Errorf("stderr = %q, want %q", stderr, wantCmd)
+		}
+		if strings.Contains(stdout, "qo ") {
+			t.Errorf("stdout was polluted with CLI command: %q", stdout)
+		}
+		if !strings.Contains(stdout, "alice") {
+			t.Errorf("stdout = %q, want it to contain alice", stdout)
+		}
+	})
+
+	t.Run("formats options correctly", func(t *testing.T) {
+		t.Parallel()
+
+		csvPath := writeFile(t, "data.csv", "name\nalice\n")
+		stdout, stderr, err := runCmdWithStreams(t, "--print-command", "-i", "csv", "-o", "csv", "--no-header", "-q", "SELECT * FROM data", csvPath)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		wantCmd := fmt.Sprintf("qo -i csv -o csv --no-header -q \"SELECT * FROM data\" %s\n", csvPath)
+		if stderr != wantCmd {
+			t.Errorf("stderr = %q, want %q", stderr, wantCmd)
+		}
+		if !strings.Contains(stdout, "alice") {
+			t.Errorf("stdout = %q, want it to contain alice", stdout)
+		}
+	})
+
+	t.Run("escapes special characters", func(t *testing.T) {
+		t.Parallel()
+
+		specialFile := writeFile(t, "my file.json", `[{"val": "hello"}]`)
+		_, stderr, err := runCmdWithStreams(t, "--print-command", "-q", `SELECT val, 'test' AS "alias" FROM my_file`, specialFile)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		wantEscapedQuery := `"SELECT val, 'test' AS \"alias\" FROM my_file"`
+		if !strings.Contains(stderr, wantEscapedQuery) {
+			t.Errorf("stderr %q does not contain properly escaped query %q", stderr, wantEscapedQuery)
+		}
+		wantQuotedFile := fmt.Sprintf(`"%s"`, specialFile)
+		if !strings.Contains(stderr, wantQuotedFile) {
+			t.Errorf("stderr %q does not contain properly escaped file %q", stderr, wantQuotedFile)
+		}
+	})
+
+	t.Run("does not print command when stdin is used", func(t *testing.T) {
+		t.Parallel()
+
+		database, err := db.New()
+		if err != nil {
+			t.Fatalf("failed to create db: %v", err)
+		}
+		testutil.CloseDB(t, database)
+
+		cfg := &runConfig{
+			query:     "SELECT 1",
+			filePaths: []string{jsonPath},
+		}
+		opts := &options{
+			printCommand: true,
+			outputFormat: "json",
+		}
+		var stdout, stderr bytes.Buffer
+		if err := execute(database, cfg, opts, &stdout, &stderr, true); err != nil {
+			t.Fatalf("execute failed: %v", err)
+		}
+		if stderr.String() != "" {
+			t.Errorf("stderr = %q, want empty when useStdin is true", stderr.String())
+		}
+	})
+}
+
+func TestFormatCLICommand(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		cfg      *runConfig
+		opts     *options
+		expected string
+	}{
+		{
+			name: "basic query",
+			cfg: &runConfig{
+				query:     "SELECT * FROM users",
+				filePaths: []string{"users.json"},
+			},
+			opts:     &options{outputFormat: "json"},
+			expected: `qo -q "SELECT * FROM users" users.json`,
+		},
+		{
+			name: "with all options",
+			cfg: &runConfig{
+				query:     "SELECT id FROM data",
+				filePaths: []string{"data.csv", "other.json"},
+			},
+			opts: &options{
+				inputFormat:  "csv",
+				outputFormat: "table",
+				noHeader:     true,
+			},
+			expected: `qo -i csv -o table --no-header -q "SELECT id FROM data" data.csv other.json`,
+		},
+		{
+			name: "special characters in query and path",
+			cfg: &runConfig{
+				query:     `SELECT "price" * 1.1, "$total", ` + "`col`" + ` FROM items`,
+				filePaths: []string{"path with spaces/file.csv"},
+			},
+			opts:     &options{outputFormat: "json"},
+			expected: "qo -q \"SELECT \\\"price\\\" * 1.1, \\\"\\$total\\\", \\`col\\` FROM items\" \"path with spaces/file.csv\"",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			got := formatCLICommand(tt.cfg, tt.opts)
+			if got != tt.expected {
+				t.Errorf("formatCLICommand() =\n%q\nwant:\n%q", got, tt.expected)
+			}
+		})
+	}
 }

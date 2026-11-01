@@ -115,6 +115,7 @@ qo --no-header raw.csv -q "SELECT col1, col2 FROM raw"  # Headerless CSV
 | `--output` | `-o` | json | Output format: json, jsonl, csv, tsv, psv, table |
 | `--query` | `-q` | | Run SQL query directly (Skip TUI) |
 | `--no-header` | | | Treat first row as data, not header (CSV/TSV/PSV only) |
+| `--print-command` | | | Print equivalent CLI command to stderr upon exit |
 
 ## UI Controls
 
