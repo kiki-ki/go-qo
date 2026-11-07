@@ -8,7 +8,7 @@ require (
 	github.com/charmbracelet/lipgloss v1.1.0
 	github.com/spf13/cobra v1.10.2
 	github.com/tidwall/gjson v1.20.0
-	modernc.org/sqlite v1.61.0
+	modernc.org/sqlite v1.61.1
 )
 
 require (
