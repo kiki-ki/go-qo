@@ -168,7 +168,9 @@ func execute(database *db.DB, cfg *runConfig, opts *options, out, errOut io.Writ
 	}
 
 	if opts.printCommand && !useStdin && len(cfg.filePaths) > 0 {
-		fmt.Fprintln(errOut, formatCLICommand(cfg, opts))
+		if _, err := fmt.Fprintln(errOut, formatCLICommand(cfg, opts)); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -219,7 +221,7 @@ func isSafeArg(s string) bool {
 		return false
 	}
 	for _, r := range s {
-		if !((r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '_' || r == '-' || r == '.' || r == '/') {
+		if (r < 'a' || r > 'z') && (r < 'A' || r > 'Z') && (r < '0' || r > '9') && r != '_' && r != '-' && r != '.' && r != '/' {
 			return false
 		}
 	}

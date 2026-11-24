@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -354,6 +355,30 @@ func TestRootCmd_PrintCommand(t *testing.T) {
 			t.Errorf("stderr = %q, want empty when useStdin is true", stderr.String())
 		}
 	})
+
+	t.Run("propagates stderr write error", func(t *testing.T) {
+		t.Parallel()
+
+		wantErr := errors.New("write failed")
+		cmd := newRootCmd()
+		var stdout bytes.Buffer
+		cmd.SetOut(&stdout)
+		cmd.SetErr(errWriter{err: wantErr})
+		cmd.SetArgs([]string{"--print-command", "-q", "SELECT name FROM users", jsonPath})
+
+		err := cmd.Execute()
+		if !errors.Is(err, wantErr) {
+			t.Errorf("err = %v, want %v", err, wantErr)
+		}
+	})
+}
+
+type errWriter struct {
+	err error
+}
+
+func (w errWriter) Write(_ []byte) (int, error) {
+	return 0, w.err
 }
 
 func TestFormatCLICommand(t *testing.T) {
