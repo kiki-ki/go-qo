@@ -76,6 +76,30 @@ func TestDB_LoadData(t *testing.T) {
 	}
 }
 
+func TestDB_LoadData_ColumnNameWithBacktick(t *testing.T) {
+	database, err := db.New()
+	if err != nil {
+		t.Fatalf("failed to create db: %v", err)
+	}
+	testutil.CloseDB(t, database)
+
+	parsed, err := parser.ParseJSONBytes([]byte("[{\"a`b\":1}]"))
+	if err != nil {
+		t.Fatalf("failed to parse test data: %v", err)
+	}
+	if err := database.LoadData("backtick_test", parsed); err != nil {
+		t.Fatalf("LoadData() error = %v", err)
+	}
+
+	var got int64
+	if err := database.QueryRow("SELECT \"a`b\" FROM backtick_test").Scan(&got); err != nil {
+		t.Fatalf("query failed: %v", err)
+	}
+	if got != 1 {
+		t.Errorf("queried value = %d, want 1", got)
+	}
+}
+
 func TestTableNameFromPath(t *testing.T) {
 	tests := []struct {
 		path string
