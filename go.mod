@@ -4,7 +4,7 @@ go 1.27.3
 
 require (
 	github.com/charmbracelet/bubbles v1.0.0
-	github.com/charmbracelet/bubbletea v1.3.10
+	github.com/charmbracelet/bubbletea/v2 v2.1.2
 	github.com/charmbracelet/lipgloss v1.1.0
 	github.com/spf13/cobra v1.10.2
 	github.com/tidwall/gjson v1.20.6
