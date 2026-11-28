@@ -2,6 +2,7 @@ package ui_test
 
 import (
 	"database/sql"
+	"image/color"
 	"strings"
 	"testing"
 
@@ -227,6 +228,38 @@ func TestModel_TableNavigation(t *testing.T) {
 	}
 	if !strings.Contains(view, "id:") {
 		t.Error("expected column 'id' after h navigation")
+	}
+}
+
+func TestModel_View_UsesAltScreen(t *testing.T) {
+	db := setupTestTable(t)
+	m := ui.NewModel(db, []string{"test"}, nil)
+
+	if !m.View().AltScreen {
+		t.Error("expected the view to use the alternate screen")
+	}
+}
+
+func TestModel_BackgroundColor(t *testing.T) {
+	const (
+		white = "\x1b[97m" // base color on a dark background
+		black = "\x1b[30m" // base color on a light background
+	)
+	db := setupTestTable(t)
+	m := ui.NewModel(db, []string{"test"}, nil)
+
+	if view := m.View().Content; !strings.Contains(view, white) || strings.Contains(view, black) {
+		t.Error("expected dark background styles before the terminal answers")
+	}
+
+	updated, _ := m.Update(tea.BackgroundColorMsg{Color: color.White})
+	if view := updated.View().Content; !strings.Contains(view, black) || strings.Contains(view, white) {
+		t.Error("expected light background styles after a light background color")
+	}
+
+	updated, _ = updated.Update(tea.BackgroundColorMsg{Color: color.Black})
+	if view := updated.View().Content; !strings.Contains(view, white) || strings.Contains(view, black) {
+		t.Error("expected dark background styles after a dark background color")
 	}
 }
 
