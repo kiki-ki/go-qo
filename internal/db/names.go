@@ -26,7 +26,7 @@ func (s *NameSet) Claim(name string) string {
 }
 
 // Reserve claims name as is and reports whether it was still free.
-func (s *NameSet) Reserve(candidate string) bool {
+func (s *NameSet) Reserve(name string) bool {
 	if s.used == nil {
 		s.used = make(map[string]bool)
 	}
@@ -37,7 +37,7 @@ func (s *NameSet) Reserve(candidate string) bool {
 			return r + ('a' - 'A')
 		}
 		return r
-	}, candidate)
+	}, name)
 	if s.used[key] {
 		return false
 	}

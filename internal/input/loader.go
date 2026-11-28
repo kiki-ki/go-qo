@@ -138,7 +138,6 @@ func (l *Loader) Renamed() []string {
 	return l.renamed
 }
 
-// load renames duplicate columns and loads parsed into tableName.
 func (l *Loader) load(tableName string, parsed *parser.ParsedData) error {
 	renamed := db.UniqueColumns(parsed.Columns)
 	for i, col := range renamed {

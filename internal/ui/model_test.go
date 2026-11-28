@@ -311,7 +311,6 @@ func TestModel_ShowsWarnings(t *testing.T) {
 		t.Errorf("expected warning in view, got:\n%s", view)
 	}
 
-	// An error takes over the line, and the warning returns once a query succeeds.
 	updated, _ = updated.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("x")})
 	updated, _ = updated.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	if view := updated.View(); !strings.Contains(view, "Error:") || strings.Contains(view, "Warning:") {
