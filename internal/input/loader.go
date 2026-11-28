@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"strings"
 
 	"github.com/kiki-ki/go-qo/internal/db"
 	"github.com/kiki-ki/go-qo/internal/parser"
@@ -30,7 +29,7 @@ type Loader struct {
 	db      *db.DB
 	format  Format // forced format, or empty to resolve each input separately
 	options *LoaderOptions
-	used    map[string]bool // table names already taken by this loader
+	tables  db.NameSet // distinct files can share a basename; a collision would fail the whole run
 }
 
 // NewLoader creates a new Loader.
@@ -42,33 +41,6 @@ func NewLoader(database *db.DB, format Format, options *LoaderOptions) *Loader {
 		db:      database,
 		format:  format,
 		options: options,
-		used:    make(map[string]bool),
-	}
-}
-
-// claim reserves a table name, appending a numeric suffix when the preferred
-// name is taken. Distinct files can map to the same name, for example when they
-// share a basename, and letting them collide would fail the whole run.
-func (l *Loader) claim(name string) string {
-	// SQLite identifiers are case-insensitive, so names differing only in case
-	// would pass a case-sensitive check here and still collide at CREATE TABLE.
-	take := func(candidate string) bool {
-		key := strings.ToLower(candidate)
-		if l.used[key] {
-			return false
-		}
-		l.used[key] = true
-		return true
-	}
-
-	if take(name) {
-		return name
-	}
-	for i := 2; ; i++ {
-		candidate := fmt.Sprintf("%s_%d", name, i)
-		if take(candidate) {
-			return candidate
-		}
 	}
 }
 
@@ -130,7 +102,7 @@ func (l *Loader) LoadReader(r io.Reader, tableName string) (string, error) {
 		return "", fmt.Errorf("failed to parse input: %w", err)
 	}
 
-	tableName = l.claim(tableName)
+	tableName = l.tables.Claim(tableName)
 	if err := l.db.LoadData(tableName, parsed); err != nil {
 		return "", fmt.Errorf("failed to load data: %w", err)
 	}
@@ -149,7 +121,7 @@ func (l *Loader) LoadFiles(filePaths []string) ([]string, error) {
 			return nil, fmt.Errorf("failed to parse %s: %w", path, err)
 		}
 
-		tableName := l.claim(db.TableNameFromPath(path))
+		tableName := l.tables.Claim(db.TableNameFromPath(path))
 
 		if err := l.db.LoadData(tableName, parsed); err != nil {
 			return nil, fmt.Errorf("failed to load table %s: %w", tableName, err)
