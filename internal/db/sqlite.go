@@ -34,14 +34,18 @@ func (db *DB) LoadData(tableName string, data *parser.ParsedData) error {
 	return db.insertRows(tableName, data.Columns, data.Rows)
 }
 
+func quoteIdentifier(name string) string {
+	return "`" + strings.ReplaceAll(name, "`", "``") + "`"
+}
+
 // createTable creates a table with the given columns.
 func (db *DB) createTable(tableName string, columns []parser.Column) error {
 	colDefs := make([]string, len(columns))
 	for i, col := range columns {
-		colDefs[i] = fmt.Sprintf("`%s` %s", col.Name, col.Type.String())
+		colDefs[i] = fmt.Sprintf("%s %s", quoteIdentifier(col.Name), col.Type.String())
 	}
 
-	createSQL := fmt.Sprintf("CREATE TABLE `%s` (%s)", tableName, strings.Join(colDefs, ", "))
+	createSQL := fmt.Sprintf("CREATE TABLE %s (%s)", quoteIdentifier(tableName), strings.Join(colDefs, ", "))
 	if _, err := db.Exec(createSQL); err != nil {
 		return fmt.Errorf("failed to create table %s: %w", tableName, err)
 	}
@@ -63,7 +67,7 @@ func (db *DB) insertRows(tableName string, columns []parser.Column, rows [][]any
 	for i := range placeholders {
 		placeholders[i] = "?"
 	}
-	insertSQL := fmt.Sprintf("INSERT INTO `%s` VALUES (%s)", tableName, strings.Join(placeholders, ", "))
+	insertSQL := fmt.Sprintf("INSERT INTO %s VALUES (%s)", quoteIdentifier(tableName), strings.Join(placeholders, ", "))
 
 	stmt, err := tx.Prepare(insertSQL)
 	if err != nil {
