@@ -2,10 +2,11 @@ package ui_test
 
 import (
 	"database/sql"
+	"image/color"
 	"strings"
 	"testing"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/kiki-ki/go-qo/internal/testutil"
 	"github.com/kiki-ki/go-qo/internal/ui"
@@ -28,7 +29,7 @@ func setupTestTable(t *testing.T) *sql.DB {
 func TestNewModel(t *testing.T) {
 	db := setupTestTable(t)
 	m := ui.NewModel(db, []string{"test"}, nil)
-	view := m.View()
+	view := m.View().Content
 
 	if !strings.Contains(view, "QUERY") {
 		t.Error("expected QUERY mode in view")
@@ -45,17 +46,17 @@ func TestModel_Quit(t *testing.T) {
 	db := setupTestTable(t)
 
 	tests := []struct {
-		name    string
-		keyType tea.KeyType
+		name string
+		key  tea.KeyPressMsg
 	}{
-		{"ctrl+c", tea.KeyCtrlC},
-		{"esc", tea.KeyEsc},
+		{"ctrl+c", tea.KeyPressMsg{Code: 'c', Mod: tea.ModCtrl}},
+		{"esc", tea.KeyPressMsg{Code: tea.KeyEscape}},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			m := ui.NewModel(db, []string{"test"}, nil)
-			_, cmd := m.Update(tea.KeyMsg{Type: tt.keyType})
+			_, cmd := m.Update(tt.key)
 			if cmd == nil {
 				t.Errorf("expected quit command for %s", tt.name)
 			}
@@ -76,7 +77,7 @@ func TestModel_Init(t *testing.T) {
 func TestModel_WindowResize(t *testing.T) {
 	db := setupTestTable(t)
 	m := ui.NewModel(db, []string{"test"}, nil)
-	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 
 	sizes := []tea.WindowSizeMsg{
 		{Width: 120, Height: 40},
@@ -86,7 +87,7 @@ func TestModel_WindowResize(t *testing.T) {
 
 	for _, size := range sizes {
 		updated, _ = updated.Update(size)
-		_ = updated.View()
+		_ = updated.View().Content
 	}
 }
 
@@ -94,10 +95,10 @@ func TestModel_ErrorDisplay(t *testing.T) {
 	db := setupTestTable(t)
 	m := ui.NewModel(db, []string{"test"}, nil)
 
-	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("INVALID SQL")})
-	updated, _ = updated.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, _ := m.Update(tea.KeyPressMsg{Text: "INVALID SQL"})
+	updated, _ = updated.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 
-	view := updated.View()
+	view := updated.View().Content
 	if !strings.Contains(view, "Error") {
 		t.Error("expected error message in view for invalid SQL")
 	}
@@ -108,7 +109,7 @@ func TestModel_EnterExecutesQuery(t *testing.T) {
 	m := ui.NewModel(db, []string{"test"}, nil)
 
 	// Enter executes query but stays in TUI (no quit command)
-	updated, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	if cmd != nil {
 		t.Fatal("Enter should not return quit command")
 	}
@@ -139,16 +140,16 @@ func TestModel_EscReturnsResult(t *testing.T) {
 
 			if tt.input != "" {
 				for range "SELECT * FROM test LIMIT 10" {
-					updated, _ = updated.Update(tea.KeyMsg{Type: tea.KeyBackspace})
+					updated, _ = updated.Update(tea.KeyPressMsg{Code: tea.KeyBackspace})
 				}
-				updated, _ = updated.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(tt.input)})
+				updated, _ = updated.Update(tea.KeyPressMsg{Text: tt.input})
 			}
 
 			// Execute query first
-			updated, _ = updated.Update(tea.KeyMsg{Type: tea.KeyEnter})
+			updated, _ = updated.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 
 			// Esc: output result & quit
-			updated, cmd := updated.Update(tea.KeyMsg{Type: tea.KeyEsc})
+			updated, cmd := updated.Update(tea.KeyPressMsg{Code: tea.KeyEsc})
 			if cmd == nil {
 				t.Fatal("Esc should return quit command")
 			}
@@ -165,7 +166,7 @@ func TestModel_EscReturnsResult(t *testing.T) {
 func TestModel_TableList(t *testing.T) {
 	db := setupTestTable(t)
 	m := ui.NewModel(db, []string{"users", "orders"}, nil)
-	view := m.View()
+	view := m.View().Content
 
 	if !strings.Contains(view, "Tables:") {
 		t.Error("expected 'Tables:' in view")
@@ -180,9 +181,9 @@ func TestModel_CellDetail(t *testing.T) {
 	m := ui.NewModel(db, []string{"test"}, nil)
 
 	updated, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
-	updated, _ = updated.Update(tea.KeyMsg{Type: tea.KeyEnter}) // Execute query
-	updated, _ = updated.Update(tea.KeyMsg{Type: tea.KeyTab})   // Switch to TABLE mode
-	view := updated.View()
+	updated, _ = updated.Update(tea.KeyPressMsg{Code: tea.KeyEnter}) // Execute query
+	updated, _ = updated.Update(tea.KeyPressMsg{Code: tea.KeyTab})   // Switch to TABLE mode
+	view := updated.View().Content
 
 	if !strings.Contains(view, "TABLE") {
 		t.Error("expected TABLE mode indicator")
@@ -193,6 +194,9 @@ func TestModel_CellDetail(t *testing.T) {
 	if !strings.Contains(view, "id:") {
 		t.Error("expected column name 'id' in cell detail")
 	}
+	if !strings.Contains(view, "▶") {
+		t.Error("expected cell marker on the first cell")
+	}
 }
 
 func TestModel_TableNavigation(t *testing.T) {
@@ -200,16 +204,16 @@ func TestModel_TableNavigation(t *testing.T) {
 	m := ui.NewModel(db, []string{"test"}, nil)
 
 	updated, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
-	updated, _ = updated.Update(tea.KeyMsg{Type: tea.KeyEnter}) // Execute query
-	updated, _ = updated.Update(tea.KeyMsg{Type: tea.KeyTab})   // Switch to TABLE mode
+	updated, _ = updated.Update(tea.KeyPressMsg{Code: tea.KeyEnter}) // Execute query
+	updated, _ = updated.Update(tea.KeyPressMsg{Code: tea.KeyTab})   // Switch to TABLE mode
 
-	view := updated.View()
+	view := updated.View().Content
 	if !strings.Contains(view, "(1/2, 1/2)") {
 		t.Error("expected initial position (1/2, 1/2)")
 	}
 
-	updated, _ = updated.Update(tea.KeyMsg{Type: tea.KeyRight})
-	view = updated.View()
+	updated, _ = updated.Update(tea.KeyPressMsg{Code: tea.KeyRight})
+	view = updated.View().Content
 	if !strings.Contains(view, "(1/2, 2/2)") {
 		t.Error("expected position (1/2, 2/2) after right")
 	}
@@ -217,8 +221,8 @@ func TestModel_TableNavigation(t *testing.T) {
 		t.Error("expected column 'name' after right navigation")
 	}
 
-	updated, _ = updated.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("h")})
-	view = updated.View()
+	updated, _ = updated.Update(tea.KeyPressMsg{Text: "h"})
+	view = updated.View().Content
 	if !strings.Contains(view, "(1/2, 1/2)") {
 		t.Error("expected position (1/2, 1/2) after h")
 	}
@@ -227,11 +231,43 @@ func TestModel_TableNavigation(t *testing.T) {
 	}
 }
 
+func TestModel_View_UsesAltScreen(t *testing.T) {
+	db := setupTestTable(t)
+	m := ui.NewModel(db, []string{"test"}, nil)
+
+	if !m.View().AltScreen {
+		t.Error("expected the view to use the alternate screen")
+	}
+}
+
+func TestModel_BackgroundColor(t *testing.T) {
+	const (
+		white = "\x1b[97m" // base color on a dark background
+		black = "\x1b[30m" // base color on a light background
+	)
+	db := setupTestTable(t)
+	m := ui.NewModel(db, []string{"test"}, nil)
+
+	if view := m.View().Content; !strings.Contains(view, white) || strings.Contains(view, black) {
+		t.Error("expected dark background styles before the terminal answers")
+	}
+
+	updated, _ := m.Update(tea.BackgroundColorMsg{Color: color.White})
+	if view := updated.View().Content; !strings.Contains(view, black) || strings.Contains(view, white) {
+		t.Error("expected light background styles after a light background color")
+	}
+
+	updated, _ = updated.Update(tea.BackgroundColorMsg{Color: color.Black})
+	if view := updated.View().Content; !strings.Contains(view, white) || strings.Contains(view, black) {
+		t.Error("expected dark background styles after a dark background color")
+	}
+}
+
 func TestModel_ToggleMode(t *testing.T) {
 	db := setupTestTable(t)
 	m := ui.NewModel(db, []string{"test"}, nil)
 
-	view := m.View()
+	view := m.View().Content
 	if !strings.Contains(view, "QUERY") {
 		t.Error("expected QUERY mode initially")
 	}
@@ -239,8 +275,8 @@ func TestModel_ToggleMode(t *testing.T) {
 		t.Error("expected table list in QUERY mode")
 	}
 
-	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyTab})
-	view = updated.View()
+	updated, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyTab})
+	view = updated.View().Content
 	if !strings.Contains(view, "TABLE") {
 		t.Error("expected TABLE mode after Tab")
 	}
@@ -249,8 +285,8 @@ func TestModel_ToggleMode(t *testing.T) {
 	}
 
 	// Tab -> back to QUERY mode
-	updated, _ = updated.Update(tea.KeyMsg{Type: tea.KeyTab})
-	view = updated.View()
+	updated, _ = updated.Update(tea.KeyPressMsg{Code: tea.KeyTab})
+	view = updated.View().Content
 	if !strings.Contains(view, "QUERY") {
 		t.Error("expected QUERY mode after second Tab")
 	}
@@ -261,11 +297,11 @@ func TestExecuteQuery_UpdatesTable(t *testing.T) {
 	m := ui.NewModel(db, []string{"test"}, nil)
 
 	// Execute query
-	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 
 	// Switch to TABLE mode to see table data
-	updated, _ = updated.Update(tea.KeyMsg{Type: tea.KeyTab})
-	view := updated.View()
+	updated, _ = updated.Update(tea.KeyPressMsg{Code: tea.KeyTab})
+	view := updated.View().Content
 
 	// Verify table contains expected data
 	if !strings.Contains(view, "Alice") {
@@ -289,12 +325,12 @@ func TestExecuteQuery_SetsErrorOnInvalidSQL(t *testing.T) {
 	// Clear default query and set invalid one
 	var updated tea.Model = m
 	for range "SELECT * FROM test LIMIT 10" {
-		updated, _ = updated.Update(tea.KeyMsg{Type: tea.KeyBackspace})
+		updated, _ = updated.Update(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	}
-	updated, _ = updated.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("SELECT * FROM does_not_exist")})
-	updated, _ = updated.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, _ = updated.Update(tea.KeyPressMsg{Text: "SELECT * FROM does_not_exist"})
+	updated, _ = updated.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 
-	view := updated.View()
+	view := updated.View().Content
 	if !strings.Contains(view, "Error") {
 		t.Error("expected error message in view for invalid SQL")
 	}
@@ -306,19 +342,19 @@ func TestModel_ShowsWarnings(t *testing.T) {
 	m := ui.NewModel(db, []string{"test"}, []string{warning})
 
 	updated, _ := m.Update(tea.WindowSizeMsg{Width: 120, Height: 24})
-	updated, _ = updated.Update(tea.KeyMsg{Type: tea.KeyEnter})
-	if view := updated.View(); !strings.Contains(view, "Warning: "+warning) {
+	updated, _ = updated.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	if view := updated.View().Content; !strings.Contains(view, "Warning: "+warning) {
 		t.Errorf("expected warning in view, got:\n%s", view)
 	}
 
-	updated, _ = updated.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("x")})
-	updated, _ = updated.Update(tea.KeyMsg{Type: tea.KeyEnter})
-	if view := updated.View(); !strings.Contains(view, "Error:") || strings.Contains(view, "Warning:") {
+	updated, _ = updated.Update(tea.KeyPressMsg{Text: "x"})
+	updated, _ = updated.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	if view := updated.View().Content; !strings.Contains(view, "Error:") || strings.Contains(view, "Warning:") {
 		t.Errorf("expected error instead of warning, got:\n%s", view)
 	}
-	updated, _ = updated.Update(tea.KeyMsg{Type: tea.KeyBackspace})
-	updated, _ = updated.Update(tea.KeyMsg{Type: tea.KeyEnter})
-	if view := updated.View(); !strings.Contains(view, "Warning: "+warning) {
+	updated, _ = updated.Update(tea.KeyPressMsg{Code: tea.KeyBackspace})
+	updated, _ = updated.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	if view := updated.View().Content; !strings.Contains(view, "Warning: "+warning) {
 		t.Errorf("expected warning back after a successful query, got:\n%s", view)
 	}
 }

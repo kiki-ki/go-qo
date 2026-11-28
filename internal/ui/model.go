@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/charmbracelet/bubbles/table"
-	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/table"
+	"charm.land/bubbles/v2/textinput"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 )
 
 // Result holds the final query when exiting UI.
@@ -22,6 +22,7 @@ type Model struct {
 	mode       Mode
 	table      table.Model
 	textInput  textinput.Model
+	styles     styles
 	err        error
 	width      int
 	height     int
@@ -42,18 +43,41 @@ func (m Model) Result() *Result {
 
 // NewModel creates a new UI model.
 func NewModel(db *sql.DB, tableNames, warnings []string) Model {
-	ti := newTextInput(tableNames)
-	t := newTable()
-
-	return Model{
+	m := Model{
 		db:         db,
 		mode:       ModeQuery,
-		table:      t,
-		textInput:  ti,
+		table:      newTable(),
+		textInput:  newTextInput(tableNames),
 		tableState: NewTableState(),
 		tableNames: tableNames,
 		warnings:   warnings,
 	}
+	// Dark until the terminal answers the background color query.
+	m.applyStyles(newStyles(true))
+	return m
+}
+
+// applyStyles sets the styles of the model and its sub-components.
+func (m *Model) applyStyles(s styles) {
+	m.styles = s
+
+	ts := textinput.DefaultStyles(true)
+	for _, state := range []*textinput.StyleState{&ts.Focused, &ts.Blurred} {
+		state.Text = s.textBase
+		state.Placeholder = styleTextMuted
+		state.Prompt = styleTextAccent
+	}
+	ts.Cursor.Color = colorAccent
+	m.textInput.SetStyles(ts)
+
+	tbl := table.DefaultStyles()
+	tbl.Header = tbl.Header.
+		BorderStyle(lipgloss.NormalBorder()).
+		BorderForeground(s.colorBase).
+		BorderBottom(true).
+		Bold(false)
+	tbl.Selected = lipgloss.NewStyle()
+	m.table.SetStyles(tbl)
 }
 
 // newTextInput creates a configured text input component.
@@ -62,12 +86,7 @@ func newTextInput(tableNames []string) textinput.Model {
 	ti.Placeholder = "SQL Query..."
 	ti.Focus()
 	ti.CharLimit = inputCharLimit
-	ti.Width = inputInitialWidth
-
-	ti.TextStyle = styleTextBase
-	ti.PlaceholderStyle = styleTextMuted
-	ti.PromptStyle = styleTextAccent
-	ti.Cursor.Style = styleTextAccent
+	ti.SetWidth(inputInitialWidth)
 
 	if len(tableNames) > 0 {
 		ti.SetValue(fmt.Sprintf("SELECT * FROM %s LIMIT %d", tableNames[0], defaultQueryLimit))
@@ -78,23 +97,12 @@ func newTextInput(tableNames []string) textinput.Model {
 
 // newTable creates a configured table component.
 func newTable() table.Model {
-	t := table.New(
+	return table.New(
 		table.WithColumns([]table.Column{{Title: "Results", Width: initialColumnWidth}}),
 		table.WithRows([]table.Row{}),
 		table.WithFocused(false),
 		table.WithHeight(initialTableHeight),
 	)
-
-	s := table.DefaultStyles()
-	s.Header = s.Header.
-		BorderStyle(lipgloss.NormalBorder()).
-		BorderForeground(colorBase).
-		BorderBottom(true).
-		Bold(false)
-	s.Selected = lipgloss.NewStyle()
-	t.SetStyles(s)
-
-	return t
 }
 
 // initQueryMsg is sent to trigger initial query execution.
@@ -104,6 +112,7 @@ type initQueryMsg struct{}
 func (m Model) Init() tea.Cmd {
 	return tea.Batch(
 		textinput.Blink,
+		tea.RequestBackgroundColor,
 		func() tea.Msg { return initQueryMsg{} },
 	)
 }
@@ -118,9 +127,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if query != "" {
 			m.executeQuery()
 		}
+	case tea.BackgroundColorMsg:
+		m.applyStyles(newStyles(msg.IsDark()))
 	case tea.WindowSizeMsg:
 		m.handleWindowResize(msg)
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		if cmd, quit := m.handleKeyMsg(msg); quit {
 			return m, tea.Quit
 		} else if cmd != nil {
@@ -158,24 +169,24 @@ func (m *Model) handleWindowResize(msg tea.WindowSizeMsg) {
 	m.width = msg.Width
 	m.height = msg.Height
 	m.table.SetHeight(msg.Height - tableHeightOffset)
-	m.textInput.Width = msg.Width - inputWidthOffset
+	m.textInput.SetWidth(msg.Width - inputWidthOffset)
 	m.syncTableView(true)
 }
 
 // handleKeyMsg processes key events and returns a command and quit flag.
-func (m *Model) handleKeyMsg(msg tea.KeyMsg) (tea.Cmd, bool) {
-	switch msg.Type {
-	case tea.KeyCtrlC:
+func (m *Model) handleKeyMsg(msg tea.KeyPressMsg) (tea.Cmd, bool) {
+	switch msg.String() {
+	case "ctrl+c":
 		return nil, true
 
-	case tea.KeyEsc:
+	case "esc":
 		query := m.textInput.Value()
 		if query != "" {
 			m.result = &Result{Query: query}
 		}
 		return nil, true
 
-	case tea.KeyEnter:
+	case "enter":
 		if m.mode != ModeQuery {
 			return nil, false
 		}
@@ -186,10 +197,10 @@ func (m *Model) handleKeyMsg(msg tea.KeyMsg) (tea.Cmd, bool) {
 		m.executeQuery()
 		return nil, false
 
-	case tea.KeyTab:
+	case "tab":
 		return m.toggleMode(), false
 
-	case tea.KeyLeft, tea.KeyRight, tea.KeyRunes:
+	default:
 		if m.mode == ModeTable {
 			m.handleTableNavigation(msg)
 		}
@@ -212,9 +223,9 @@ func (m *Model) toggleMode() tea.Cmd {
 }
 
 // handleTableNavigation handles column cursor movement in table mode.
-func (m *Model) handleTableNavigation(msg tea.KeyMsg) {
-	moveLeft := msg.Type == tea.KeyLeft || msg.String() == "h"
-	moveRight := msg.Type == tea.KeyRight || msg.String() == "l"
+func (m *Model) handleTableNavigation(msg tea.KeyPressMsg) {
+	moveLeft := msg.String() == "left" || msg.String() == "h"
+	moveRight := msg.String() == "right" || msg.String() == "l"
 
 	var moved bool
 	if moveLeft {
@@ -250,6 +261,7 @@ func (m *Model) syncTableView(rebuildColumns bool) {
 		cols := m.tableState.BuildVisibleColumns(visibleCols, colWidth)
 		m.table.SetRows([]table.Row{})
 		m.table.SetColumns(cols)
+		m.table.SetWidth(len(cols) * (colWidth + columnBorderWidth))
 	}
 
 	rows := m.tableState.BuildVisibleRows(cursor, visibleCols)
@@ -303,13 +315,8 @@ func Run(db *sql.DB, tableNames, warnings []string) (*Result, error) {
 	}
 	defer func() { _ = tty.Close() }()
 
-	// Set lipgloss to use tty for color detection and reinitialize styles
-	lipgloss.SetDefaultRenderer(lipgloss.NewRenderer(tty))
-	initStyles()
-
 	p := tea.NewProgram(
 		NewModel(db, tableNames, warnings),
-		tea.WithAltScreen(),
 		tea.WithInput(tty),
 		tea.WithOutput(tty),
 	)
@@ -347,7 +354,9 @@ func (m *Model) executeQuery() {
 	}
 
 	m.tableState.SetData(cols, tableRows)
-	m.table.SetCursor(0)
 	m.syncTableView(true)
+	// SetCursor clamps to the rows already in the table, so it must follow the sync.
+	m.table.SetCursor(0)
+	m.syncTableView(false)
 	m.err = nil
 }

@@ -1,36 +1,39 @@
 package ui
 
-import "github.com/charmbracelet/lipgloss"
+import (
+	"image/color"
+
+	"charm.land/lipgloss/v2"
+)
 
 // cellMarker is the character used to indicate the selected cell.
 const cellMarker = "▶"
 
-// Color palette with adaptive colors for light/dark terminal themes.
+// Color palette.
 // Reference: https://www.ditig.com/256-colors-cheat-sheet
 var (
-	colorBase   = lipgloss.AdaptiveColor{Light: "0", Dark: "15"} // black/white
-	colorError  = lipgloss.Color("9")                            // red
-	colorAccent = lipgloss.Color("13")                           // pink
+	colorError  = lipgloss.Color("9")  // red
+	colorAccent = lipgloss.Color("13") // pink
 )
 
-// Styles
 var (
-	styleTextBase   lipgloss.Style
-	styleTextMuted  lipgloss.Style
-	styleTextAccent lipgloss.Style
-	styleTextError  lipgloss.Style
+	styleTextMuted  = lipgloss.NewStyle().Faint(true)
+	styleTextAccent = lipgloss.NewStyle().Foreground(colorAccent)
+	styleTextError  = lipgloss.NewStyle().Foreground(colorError)
 )
 
-// initStyles initializes styles after the renderer is configured.
-func initStyles() {
-	styleTextBase = lipgloss.NewStyle().Foreground(colorBase)
-	styleTextMuted = lipgloss.NewStyle().Faint(true)
-	styleTextAccent = lipgloss.NewStyle().Foreground(colorAccent)
-	styleTextError = lipgloss.NewStyle().Foreground(colorError)
+// styles holds the styles that depend on the terminal background.
+type styles struct {
+	colorBase color.Color
+	textBase  lipgloss.Style
 }
 
-func init() {
-	initStyles()
+func newStyles(isDark bool) styles {
+	base := lipgloss.LightDark(isDark)(lipgloss.Color("0"), lipgloss.Color("15")) // black/white
+	return styles{
+		colorBase: base,
+		textBase:  lipgloss.NewStyle().Foreground(base),
+	}
 }
 
 // Table column dimensions.

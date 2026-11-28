@@ -3,7 +3,7 @@ package ui
 import (
 	"database/sql"
 
-	"github.com/charmbracelet/bubbles/table"
+	"charm.land/bubbles/v2/table"
 
 	"github.com/kiki-ki/go-qo/internal/output"
 )
