@@ -550,8 +550,7 @@ func TestLoader_LoadReader_DuplicateColumns(t *testing.T) {
 	}
 	testutil.CloseDB(t, database)
 
-	var warnings bytes.Buffer
-	loader := input.NewLoader(database, input.FormatJSON, &input.LoaderOptions{Warnings: &warnings})
+	loader := input.NewLoader(database, input.FormatJSON, nil)
 	if _, err := loader.LoadReader(strings.NewReader(`[{"id":1,"Id":99}]`), "tmp"); err != nil {
 		t.Fatalf("LoadReader failed: %v", err)
 	}
@@ -564,8 +563,8 @@ func TestLoader_LoadReader_DuplicateColumns(t *testing.T) {
 		t.Errorf("id, Id_2 = %d, %d, want 1, 99", id, renamed)
 	}
 
-	want := "Warning: column \"Id\" in table tmp renamed to \"Id_2\"\n"
-	if warnings.String() != want {
-		t.Errorf("warnings = %q, want %q", warnings.String(), want)
+	want := []string{`column "Id" in table tmp renamed to "Id_2"`}
+	if got := loader.Renamed(); !slices.Equal(got, want) {
+		t.Errorf("Renamed() = %q, want %q", got, want)
 	}
 }

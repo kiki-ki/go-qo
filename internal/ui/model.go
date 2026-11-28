@@ -26,6 +26,7 @@ type Model struct {
 	width      int
 	height     int
 	tableNames []string
+	warnings   []string
 
 	// Table data state
 	tableState *TableState
@@ -40,7 +41,7 @@ func (m Model) Result() *Result {
 }
 
 // NewModel creates a new UI model.
-func NewModel(db *sql.DB, tableNames []string) Model {
+func NewModel(db *sql.DB, tableNames, warnings []string) Model {
 	ti := newTextInput(tableNames)
 	t := newTable()
 
@@ -51,6 +52,7 @@ func NewModel(db *sql.DB, tableNames []string) Model {
 		textInput:  ti,
 		tableState: NewTableState(),
 		tableNames: tableNames,
+		warnings:   warnings,
 	}
 }
 
@@ -294,7 +296,7 @@ func (m *Model) calculateColumnWidth(numCols int) int {
 }
 
 // Run starts the UI application and returns the final query if any.
-func Run(db *sql.DB, tableNames []string) (*Result, error) {
+func Run(db *sql.DB, tableNames, warnings []string) (*Result, error) {
 	tty, err := os.OpenFile("/dev/tty", os.O_RDWR, 0)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open /dev/tty: %w", err)
@@ -306,7 +308,7 @@ func Run(db *sql.DB, tableNames []string) (*Result, error) {
 	initStyles()
 
 	p := tea.NewProgram(
-		NewModel(db, tableNames),
+		NewModel(db, tableNames, warnings),
 		tea.WithAltScreen(),
 		tea.WithInput(tty),
 		tea.WithOutput(tty),

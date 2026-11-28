@@ -27,7 +27,7 @@ func setupTestTable(t *testing.T) *sql.DB {
 
 func TestNewModel(t *testing.T) {
 	db := setupTestTable(t)
-	m := ui.NewModel(db, []string{"test"})
+	m := ui.NewModel(db, []string{"test"}, nil)
 	view := m.View()
 
 	if !strings.Contains(view, "QUERY") {
@@ -54,7 +54,7 @@ func TestModel_Quit(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			m := ui.NewModel(db, []string{"test"})
+			m := ui.NewModel(db, []string{"test"}, nil)
 			_, cmd := m.Update(tea.KeyMsg{Type: tt.keyType})
 			if cmd == nil {
 				t.Errorf("expected quit command for %s", tt.name)
@@ -65,7 +65,7 @@ func TestModel_Quit(t *testing.T) {
 
 func TestModel_Init(t *testing.T) {
 	db := setupTestTable(t)
-	m := ui.NewModel(db, []string{"test"})
+	m := ui.NewModel(db, []string{"test"}, nil)
 	cmd := m.Init()
 
 	if cmd == nil {
@@ -75,7 +75,7 @@ func TestModel_Init(t *testing.T) {
 
 func TestModel_WindowResize(t *testing.T) {
 	db := setupTestTable(t)
-	m := ui.NewModel(db, []string{"test"})
+	m := ui.NewModel(db, []string{"test"}, nil)
 	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
 
 	sizes := []tea.WindowSizeMsg{
@@ -92,7 +92,7 @@ func TestModel_WindowResize(t *testing.T) {
 
 func TestModel_ErrorDisplay(t *testing.T) {
 	db := setupTestTable(t)
-	m := ui.NewModel(db, []string{"test"})
+	m := ui.NewModel(db, []string{"test"}, nil)
 
 	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("INVALID SQL")})
 	updated, _ = updated.Update(tea.KeyMsg{Type: tea.KeyEnter})
@@ -105,7 +105,7 @@ func TestModel_ErrorDisplay(t *testing.T) {
 
 func TestModel_EnterExecutesQuery(t *testing.T) {
 	db := setupTestTable(t)
-	m := ui.NewModel(db, []string{"test"})
+	m := ui.NewModel(db, []string{"test"}, nil)
 
 	// Enter executes query but stays in TUI (no quit command)
 	updated, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
@@ -134,7 +134,7 @@ func TestModel_EscReturnsResult(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			m := ui.NewModel(db, []string{"test"})
+			m := ui.NewModel(db, []string{"test"}, nil)
 			var updated tea.Model = m
 
 			if tt.input != "" {
@@ -164,7 +164,7 @@ func TestModel_EscReturnsResult(t *testing.T) {
 
 func TestModel_TableList(t *testing.T) {
 	db := setupTestTable(t)
-	m := ui.NewModel(db, []string{"users", "orders"})
+	m := ui.NewModel(db, []string{"users", "orders"}, nil)
 	view := m.View()
 
 	if !strings.Contains(view, "Tables:") {
@@ -177,7 +177,7 @@ func TestModel_TableList(t *testing.T) {
 
 func TestModel_CellDetail(t *testing.T) {
 	db := setupTestTable(t)
-	m := ui.NewModel(db, []string{"test"})
+	m := ui.NewModel(db, []string{"test"}, nil)
 
 	updated, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
 	updated, _ = updated.Update(tea.KeyMsg{Type: tea.KeyEnter}) // Execute query
@@ -197,7 +197,7 @@ func TestModel_CellDetail(t *testing.T) {
 
 func TestModel_TableNavigation(t *testing.T) {
 	db := setupTestTable(t)
-	m := ui.NewModel(db, []string{"test"})
+	m := ui.NewModel(db, []string{"test"}, nil)
 
 	updated, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
 	updated, _ = updated.Update(tea.KeyMsg{Type: tea.KeyEnter}) // Execute query
@@ -229,7 +229,7 @@ func TestModel_TableNavigation(t *testing.T) {
 
 func TestModel_ToggleMode(t *testing.T) {
 	db := setupTestTable(t)
-	m := ui.NewModel(db, []string{"test"})
+	m := ui.NewModel(db, []string{"test"}, nil)
 
 	view := m.View()
 	if !strings.Contains(view, "QUERY") {
@@ -258,7 +258,7 @@ func TestModel_ToggleMode(t *testing.T) {
 
 func TestExecuteQuery_UpdatesTable(t *testing.T) {
 	db := setupTestTable(t)
-	m := ui.NewModel(db, []string{"test"})
+	m := ui.NewModel(db, []string{"test"}, nil)
 
 	// Execute query
 	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
@@ -284,7 +284,7 @@ func TestExecuteQuery_UpdatesTable(t *testing.T) {
 
 func TestExecuteQuery_SetsErrorOnInvalidSQL(t *testing.T) {
 	db := setupTestTable(t)
-	m := ui.NewModel(db, []string{"test"})
+	m := ui.NewModel(db, []string{"test"}, nil)
 
 	// Clear default query and set invalid one
 	var updated tea.Model = m
@@ -297,5 +297,29 @@ func TestExecuteQuery_SetsErrorOnInvalidSQL(t *testing.T) {
 	view := updated.View()
 	if !strings.Contains(view, "Error") {
 		t.Error("expected error message in view for invalid SQL")
+	}
+}
+
+func TestModel_ShowsWarnings(t *testing.T) {
+	db := setupTestTable(t)
+	warning := `column "Id" in table test renamed to "Id_2"`
+	m := ui.NewModel(db, []string{"test"}, []string{warning})
+
+	updated, _ := m.Update(tea.WindowSizeMsg{Width: 120, Height: 24})
+	updated, _ = updated.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	if view := updated.View(); !strings.Contains(view, "Warning: "+warning) {
+		t.Errorf("expected warning in view, got:\n%s", view)
+	}
+
+	// An error takes over the line, and the warning returns once a query succeeds.
+	updated, _ = updated.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("x")})
+	updated, _ = updated.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	if view := updated.View(); !strings.Contains(view, "Error:") || strings.Contains(view, "Warning:") {
+		t.Errorf("expected error instead of warning, got:\n%s", view)
+	}
+	updated, _ = updated.Update(tea.KeyMsg{Type: tea.KeyBackspace})
+	updated, _ = updated.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	if view := updated.View(); !strings.Contains(view, "Warning: "+warning) {
+		t.Errorf("expected warning back after a successful query, got:\n%s", view)
 	}
 }

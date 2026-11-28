@@ -21,8 +21,7 @@ func stripBOM(data []byte) []byte {
 
 // LoaderOptions configures loader behavior.
 type LoaderOptions struct {
-	NoHeader bool      // CSV: treat first row as data, not header
-	Warnings io.Writer // receives notices about renamed columns; nil discards them
+	NoHeader bool // CSV: treat first row as data, not header
 }
 
 // Loader handles loading data into the database.
@@ -31,6 +30,7 @@ type Loader struct {
 	format  Format // forced format, or empty to resolve each input separately
 	options *LoaderOptions
 	tables  db.NameSet // distinct files can share a basename; a collision would fail the whole run
+	renamed []string
 }
 
 // NewLoader creates a new Loader.
@@ -133,14 +133,19 @@ func (l *Loader) LoadFiles(filePaths []string) ([]string, error) {
 	return tableNames, nil
 }
 
+// Renamed describes each column renamed so far, so callers can warn about it.
+func (l *Loader) Renamed() []string {
+	return l.renamed
+}
+
 // load renames duplicate columns and loads parsed into tableName.
 func (l *Loader) load(tableName string, parsed *parser.ParsedData) error {
 	renamed := db.UniqueColumns(parsed.Columns)
 	for i, col := range renamed {
 		// SQLite resolves the original name to the column that kept it, so a
 		// query for it would return another column's values without an error.
-		if from := parsed.Columns[i].Name; col.Name != from && l.options.Warnings != nil {
-			_, _ = fmt.Fprintf(l.options.Warnings, "Warning: column %q in table %s renamed to %q\n", from, tableName, col.Name)
+		if from := parsed.Columns[i].Name; col.Name != from {
+			l.renamed = append(l.renamed, fmt.Sprintf("column %q in table %s renamed to %q", from, tableName, col.Name))
 		}
 	}
 	parsed.Columns = renamed

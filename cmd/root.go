@@ -68,6 +68,7 @@ type runConfig struct {
 	query      string
 	filePaths  []string
 	tableNames []string
+	warnings   []string
 }
 
 func run(cmd *cobra.Command, args []string, opts *options) error {
@@ -85,7 +86,6 @@ func run(cmd *cobra.Command, args []string, opts *options) error {
 	// formats can be joined.
 	loader := input.NewLoader(database, input.Format(opts.inputFormat), &input.LoaderOptions{
 		NoHeader: opts.noHeader,
-		Warnings: cmd.ErrOrStderr(),
 	})
 
 	filePaths, stdinRequested := input.SplitArgs(args)
@@ -101,6 +101,10 @@ func run(cmd *cobra.Command, args []string, opts *options) error {
 
 	if err := loadData(loader, cfg, useStdin); err != nil {
 		return err
+	}
+	cfg.warnings = loader.Renamed()
+	for _, w := range cfg.warnings {
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Warning: %s\n", w)
 	}
 
 	return execute(database, cfg, opts, cmd.OutOrStdout())
@@ -150,7 +154,7 @@ func loadData(loader *input.Loader, cfg *runConfig, useStdin bool) error {
 // UI mode is used when query is empty, CLI mode when query is provided via -q flag.
 func execute(database *db.DB, cfg *runConfig, opts *options, out io.Writer) error {
 	if cfg.query == "" {
-		result, err := ui.Run(database.DB, cfg.tableNames)
+		result, err := ui.Run(database.DB, cfg.tableNames, cfg.warnings)
 		if err != nil {
 			return err
 		}
