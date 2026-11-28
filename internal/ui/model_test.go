@@ -193,6 +193,9 @@ func TestModel_CellDetail(t *testing.T) {
 	if !strings.Contains(view, "id:") {
 		t.Error("expected column name 'id' in cell detail")
 	}
+	if !strings.Contains(view, "▶") {
+		t.Error("expected cell marker on the first cell")
+	}
 }
 
 func TestModel_TableNavigation(t *testing.T) {

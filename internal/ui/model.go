@@ -354,7 +354,9 @@ func (m *Model) executeQuery() {
 	}
 
 	m.tableState.SetData(cols, tableRows)
-	m.table.SetCursor(0)
 	m.syncTableView(true)
+	// SetCursor clamps to the rows already in the table, so it must follow the sync.
+	m.table.SetCursor(0)
+	m.syncTableView(false)
 	m.err = nil
 }
