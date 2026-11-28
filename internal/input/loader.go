@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"strings"
 
 	"github.com/kiki-ki/go-qo/internal/db"
 	"github.com/kiki-ki/go-qo/internal/parser"
@@ -30,7 +29,8 @@ type Loader struct {
 	db      *db.DB
 	format  Format // forced format, or empty to resolve each input separately
 	options *LoaderOptions
-	used    map[string]bool // table names already taken by this loader
+	tables  db.NameSet // distinct files can share a basename; a collision would fail the whole run
+	renamed []string
 }
 
 // NewLoader creates a new Loader.
@@ -42,33 +42,6 @@ func NewLoader(database *db.DB, format Format, options *LoaderOptions) *Loader {
 		db:      database,
 		format:  format,
 		options: options,
-		used:    make(map[string]bool),
-	}
-}
-
-// claim reserves a table name, appending a numeric suffix when the preferred
-// name is taken. Distinct files can map to the same name, for example when they
-// share a basename, and letting them collide would fail the whole run.
-func (l *Loader) claim(name string) string {
-	// SQLite identifiers are case-insensitive, so names differing only in case
-	// would pass a case-sensitive check here and still collide at CREATE TABLE.
-	take := func(candidate string) bool {
-		key := strings.ToLower(candidate)
-		if l.used[key] {
-			return false
-		}
-		l.used[key] = true
-		return true
-	}
-
-	if take(name) {
-		return name
-	}
-	for i := 2; ; i++ {
-		candidate := fmt.Sprintf("%s_%d", name, i)
-		if take(candidate) {
-			return candidate
-		}
 	}
 }
 
@@ -130,8 +103,8 @@ func (l *Loader) LoadReader(r io.Reader, tableName string) (string, error) {
 		return "", fmt.Errorf("failed to parse input: %w", err)
 	}
 
-	tableName = l.claim(tableName)
-	if err := l.db.LoadData(tableName, parsed); err != nil {
+	tableName = l.tables.Claim(tableName)
+	if err := l.load(tableName, parsed); err != nil {
 		return "", fmt.Errorf("failed to load data: %w", err)
 	}
 
@@ -149,15 +122,33 @@ func (l *Loader) LoadFiles(filePaths []string) ([]string, error) {
 			return nil, fmt.Errorf("failed to parse %s: %w", path, err)
 		}
 
-		tableName := l.claim(db.TableNameFromPath(path))
+		tableName := l.tables.Claim(db.TableNameFromPath(path))
 
-		if err := l.db.LoadData(tableName, parsed); err != nil {
+		if err := l.load(tableName, parsed); err != nil {
 			return nil, fmt.Errorf("failed to load table %s: %w", tableName, err)
 		}
 		tableNames = append(tableNames, tableName)
 	}
 
 	return tableNames, nil
+}
+
+// Renamed describes each column renamed so far, so callers can warn about it.
+func (l *Loader) Renamed() []string {
+	return l.renamed
+}
+
+func (l *Loader) load(tableName string, parsed *parser.ParsedData) error {
+	renamed := db.UniqueColumns(parsed.Columns)
+	for i, col := range renamed {
+		// SQLite resolves the original name to the column that kept it, so a
+		// query for it would return another column's values without an error.
+		if from := parsed.Columns[i].Name; col.Name != from {
+			l.renamed = append(l.renamed, fmt.Sprintf("column %q in table %s renamed to %q", from, tableName, col.Name))
+		}
+	}
+	parsed.Columns = renamed
+	return l.db.LoadData(tableName, parsed)
 }
 
 // formatFor resolves the format to parse an input with. A forced format applies

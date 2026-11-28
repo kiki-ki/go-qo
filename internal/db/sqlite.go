@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"path/filepath"
+	"slices"
 	"strings"
 	"unicode/utf8"
 
@@ -32,6 +33,25 @@ func (db *DB) LoadData(tableName string, data *parser.ParsedData) error {
 		return err
 	}
 	return db.insertRows(tableName, data.Columns, data.Rows)
+}
+
+// UniqueColumns renames columns SQLite would reject as duplicates, such as JSON
+// keys "id" and "Id" or several empty cells in a CSV header.
+func UniqueColumns(columns []parser.Column) []parser.Column {
+	var names NameSet
+	renamed := slices.Clone(columns)
+	// Reserve every original name before suffixing, so a duplicate "ID" never
+	// takes "id_2" from a column that was named "id_2" in the input.
+	duplicate := make([]bool, len(columns))
+	for i, col := range columns {
+		duplicate[i] = !names.Reserve(col.Name)
+	}
+	for i, col := range columns {
+		if duplicate[i] {
+			renamed[i].Name = names.Claim(col.Name)
+		}
+	}
+	return renamed
 }
 
 func quoteIdentifier(name string) string {

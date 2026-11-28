@@ -79,12 +79,22 @@ func (m Model) renderCellDetail() string {
 	return styleTextBase.Render(fmt.Sprintf("\n%s%s", prefix, truncatedValue))
 }
 
-// renderError returns the error view. Always returns a line to prevent layout shift.
+// renderError returns the error view, or the load warnings while there is no
+// error. Always returns one line to prevent layout shift.
 func (m Model) renderError() string {
-	if m.err == nil {
+	if m.err != nil {
+		return styleTextError.Render(fmt.Sprintf("\nError: %v", m.err))
+	}
+	if len(m.warnings) == 0 {
 		return "\n"
 	}
-	return styleTextError.Render(fmt.Sprintf("\nError: %v", m.err))
+	// Stays on screen because a query for a renamed column's original name
+	// silently returns the column that kept that name.
+	warning := "Warning: " + strings.Join(m.warnings, "; ")
+	if width := m.width - cellDetailPadding; width > 0 {
+		warning = output.Truncate(warning, width)
+	}
+	return styleTextError.Render("\n" + warning)
 }
 
 // renderTableList returns the list of available tables.

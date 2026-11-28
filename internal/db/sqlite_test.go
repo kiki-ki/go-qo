@@ -1,6 +1,7 @@
 package db_test
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/kiki-ki/go-qo/internal/db"
@@ -73,6 +74,30 @@ func TestDB_LoadData(t *testing.T) {
 				t.Errorf("LoadData() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
+	}
+}
+
+func TestUniqueColumns(t *testing.T) {
+	columns := []parser.Column{
+		{Name: "a", Type: parser.TypeInteger},
+		{Name: "A", Type: parser.TypeInteger},
+		{Name: "a_2", Type: parser.TypeInteger},
+		{Name: "", Type: parser.TypeText},
+		{Name: "", Type: parser.TypeText},
+	}
+
+	got := db.UniqueColumns(columns)
+
+	var names []string
+	for _, col := range got {
+		names = append(names, col.Name)
+	}
+	want := []string{"a", "A_3", "a_2", "", "_2"}
+	if !slices.Equal(names, want) {
+		t.Errorf("names = %q, want %q", names, want)
+	}
+	if columns[1].Name != "A" {
+		t.Errorf("UniqueColumns mutated its input: %q", columns[1].Name)
 	}
 }
 
