@@ -1,4 +1,13 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": ["github>kiki-ki/renovate-config"]
+  "extends": ["github>kiki-ki/renovate-config"],
+  "packageRules": [
+    {
+      "description": "CI takes its Go version from the go directive, so keep it current for tools that require a newer Go. Nothing imports this module, so a newer minimum breaks no one.",
+      "matchManagers": ["gomod"],
+      "matchDepNames": ["go"],
+      "matchDepTypes": ["golang"],
+      "rangeStrategy": "bump"
+    }
+  ]
 }
