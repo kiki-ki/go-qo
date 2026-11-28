@@ -85,6 +85,7 @@ func run(cmd *cobra.Command, args []string, opts *options) error {
 	// formats can be joined.
 	loader := input.NewLoader(database, input.Format(opts.inputFormat), &input.LoaderOptions{
 		NoHeader: opts.noHeader,
+		Warnings: cmd.ErrOrStderr(),
 	})
 
 	filePaths, stdinRequested := input.SplitArgs(args)

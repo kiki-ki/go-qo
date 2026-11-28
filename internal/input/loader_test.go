@@ -542,3 +542,30 @@ func TestLoader_LoadFiles_CaseInsensitiveCollision(t *testing.T) {
 		}
 	}
 }
+
+func TestLoader_LoadReader_DuplicateColumns(t *testing.T) {
+	database, err := db.New()
+	if err != nil {
+		t.Fatalf("failed to create db: %v", err)
+	}
+	testutil.CloseDB(t, database)
+
+	var warnings bytes.Buffer
+	loader := input.NewLoader(database, input.FormatJSON, &input.LoaderOptions{Warnings: &warnings})
+	if _, err := loader.LoadReader(strings.NewReader(`[{"id":1,"Id":99}]`), "tmp"); err != nil {
+		t.Fatalf("LoadReader failed: %v", err)
+	}
+
+	var id, renamed int
+	if err := database.QueryRow("SELECT id, Id_2 FROM tmp").Scan(&id, &renamed); err != nil {
+		t.Fatalf("query failed: %v", err)
+	}
+	if id != 1 || renamed != 99 {
+		t.Errorf("id, Id_2 = %d, %d, want 1, 99", id, renamed)
+	}
+
+	want := "Warning: column \"Id\" in table tmp renamed to \"Id_2\"\n"
+	if warnings.String() != want {
+		t.Errorf("warnings = %q, want %q", warnings.String(), want)
+	}
+}

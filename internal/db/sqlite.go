@@ -29,16 +29,15 @@ func New() (*DB, error) {
 
 // LoadData loads parsed data into a table.
 func (db *DB) LoadData(tableName string, data *parser.ParsedData) error {
-	columns := uniqueColumns(data.Columns)
-	if err := db.createTable(tableName, columns); err != nil {
+	if err := db.createTable(tableName, data.Columns); err != nil {
 		return err
 	}
-	return db.insertRows(tableName, columns, data.Rows)
+	return db.insertRows(tableName, data.Columns, data.Rows)
 }
 
-// uniqueColumns renames columns SQLite would reject as duplicates, such as JSON
+// UniqueColumns renames columns SQLite would reject as duplicates, such as JSON
 // keys "id" and "Id" or several empty cells in a CSV header.
-func uniqueColumns(columns []parser.Column) []parser.Column {
+func UniqueColumns(columns []parser.Column) []parser.Column {
 	var names NameSet
 	renamed := slices.Clone(columns)
 	// Reserve every original name before suffixing, so a duplicate "ID" never

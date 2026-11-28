@@ -21,7 +21,8 @@ func stripBOM(data []byte) []byte {
 
 // LoaderOptions configures loader behavior.
 type LoaderOptions struct {
-	NoHeader bool // CSV: treat first row as data, not header
+	NoHeader bool      // CSV: treat first row as data, not header
+	Warnings io.Writer // receives notices about renamed columns; nil discards them
 }
 
 // Loader handles loading data into the database.
@@ -103,7 +104,7 @@ func (l *Loader) LoadReader(r io.Reader, tableName string) (string, error) {
 	}
 
 	tableName = l.tables.Claim(tableName)
-	if err := l.db.LoadData(tableName, parsed); err != nil {
+	if err := l.load(tableName, parsed); err != nil {
 		return "", fmt.Errorf("failed to load data: %w", err)
 	}
 
@@ -123,13 +124,27 @@ func (l *Loader) LoadFiles(filePaths []string) ([]string, error) {
 
 		tableName := l.tables.Claim(db.TableNameFromPath(path))
 
-		if err := l.db.LoadData(tableName, parsed); err != nil {
+		if err := l.load(tableName, parsed); err != nil {
 			return nil, fmt.Errorf("failed to load table %s: %w", tableName, err)
 		}
 		tableNames = append(tableNames, tableName)
 	}
 
 	return tableNames, nil
+}
+
+// load renames duplicate columns and loads parsed into tableName.
+func (l *Loader) load(tableName string, parsed *parser.ParsedData) error {
+	renamed := db.UniqueColumns(parsed.Columns)
+	for i, col := range renamed {
+		// SQLite resolves the original name to the column that kept it, so a
+		// query for it would return another column's values without an error.
+		if from := parsed.Columns[i].Name; col.Name != from && l.options.Warnings != nil {
+			_, _ = fmt.Fprintf(l.options.Warnings, "Warning: column %q in table %s renamed to %q\n", from, tableName, col.Name)
+		}
+	}
+	parsed.Columns = renamed
+	return l.db.LoadData(tableName, parsed)
 }
 
 // formatFor resolves the format to parse an input with. A forced format applies
