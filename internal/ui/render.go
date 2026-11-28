@@ -5,13 +5,20 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/charmbracelet/lipgloss"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/kiki-ki/go-qo/internal/output"
 )
 
 // View renders the UI display.
-func (m Model) View() string {
+func (m Model) View() tea.View {
+	v := tea.NewView(m.render())
+	v.AltScreen = true
+	return v
+}
+
+func (m Model) render() string {
 	var b strings.Builder
 
 	parts := []string{
@@ -34,7 +41,7 @@ func (m Model) View() string {
 	b.WriteString("\n")
 	frame := lipgloss.NewStyle().
 		BorderStyle(lipgloss.NormalBorder()).
-		BorderForeground(colorBase).
+		BorderForeground(m.styles.colorBase).
 		Padding(0, 1)
 
 	b.WriteString(frame.Render(content))
@@ -61,7 +68,7 @@ func (m Model) renderCellDetail() string {
 
 	colName, value, ok := m.tableState.SelectedCell(rowIdx)
 	if !ok {
-		return styleTextBase.Render("\n (no data)")
+		return m.styles.textBase.Render("\n (no data)")
 	}
 
 	row, totalRows, col, totalCols := m.tableState.Position(rowIdx)
@@ -76,7 +83,7 @@ func (m Model) renderCellDetail() string {
 	}
 	truncatedValue := output.Truncate(value, availableWidth)
 
-	return styleTextBase.Render(fmt.Sprintf("\n%s%s", prefix, truncatedValue))
+	return m.styles.textBase.Render(fmt.Sprintf("\n%s%s", prefix, truncatedValue))
 }
 
 // renderError returns the error view, or the load warnings while there is no
@@ -102,5 +109,5 @@ func (m Model) renderTableList() string {
 	if len(m.tableNames) == 0 {
 		return ""
 	}
-	return styleTextBase.Render(fmt.Sprintf("\n Tables: %s", strings.Join(m.tableNames, ", ")))
+	return m.styles.textBase.Render(fmt.Sprintf("\n Tables: %s", strings.Join(m.tableNames, ", ")))
 }

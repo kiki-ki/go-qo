@@ -8,8 +8,9 @@ import (
 	"io"
 	"os"
 
-	"github.com/charmbracelet/lipgloss"
-	"github.com/charmbracelet/lipgloss/table"
+	"charm.land/lipgloss/v2"
+	"charm.land/lipgloss/v2/table"
+	"github.com/charmbracelet/colorprofile"
 )
 
 type Options struct {
@@ -108,20 +109,19 @@ func (p *Printer) printTable(columns []string, data [][]any) error {
 		rows[i] = r
 	}
 
-	// Create renderer that detects TTY for color support
-	renderer := lipgloss.NewRenderer(p.opts.Output)
-
 	t := table.New().
 		Border(lipgloss.NormalBorder()).
-		BorderStyle(renderer.NewStyle().Foreground(lipgloss.Color("240"))).
+		BorderStyle(lipgloss.NewStyle().Foreground(lipgloss.Color("240"))).
 		Headers(columns...).
 		Rows(rows...)
 
 	t.StyleFunc(func(row, col int) lipgloss.Style {
-		return renderer.NewStyle().Padding(0, 1)
+		return lipgloss.NewStyle().Padding(0, 1)
 	})
 
-	_, _ = fmt.Fprintln(p.opts.Output, t.Render())
+	// Downsamples colors to what the output supports, stripping them when it is not a TTY.
+	w := colorprofile.NewWriter(p.opts.Output, os.Environ())
+	_, _ = fmt.Fprintln(w, t.Render())
 
 	return nil
 }
