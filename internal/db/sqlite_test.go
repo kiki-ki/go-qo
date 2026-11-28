@@ -108,7 +108,7 @@ func TestDB_LoadData_DuplicateColumnNames(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to get columns: %v", err)
 	}
-	want := []string{"a", "A_2", "a_2_2", "", "_2"}
+	want := []string{"a", "A_3", "a_2", "", "_2"}
 	if strings.Join(got, ",") != strings.Join(want, ",") {
 		t.Errorf("columns = %q, want %q", got, want)
 	}

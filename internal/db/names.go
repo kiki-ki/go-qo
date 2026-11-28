@@ -14,18 +14,19 @@ type NameSet struct {
 
 // Claim reserves name, or the first free suffixed form of it, and returns it.
 func (s *NameSet) Claim(name string) string {
-	if s.take(name) {
+	if s.Reserve(name) {
 		return name
 	}
 	for i := 2; ; i++ {
 		candidate := fmt.Sprintf("%s_%d", name, i)
-		if s.take(candidate) {
+		if s.Reserve(candidate) {
 			return candidate
 		}
 	}
 }
 
-func (s *NameSet) take(candidate string) bool {
+// Reserve claims name as is and reports whether it was still free.
+func (s *NameSet) Reserve(candidate string) bool {
 	if s.used == nil {
 		s.used = make(map[string]bool)
 	}
