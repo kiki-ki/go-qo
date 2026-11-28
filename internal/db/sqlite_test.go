@@ -1,6 +1,7 @@
 package db_test
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/kiki-ki/go-qo/internal/db"
@@ -73,6 +74,46 @@ func TestDB_LoadData(t *testing.T) {
 				t.Errorf("LoadData() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
+	}
+}
+
+func TestDB_LoadData_DuplicateColumnNames(t *testing.T) {
+	database, err := db.New()
+	if err != nil {
+		t.Fatalf("failed to create db: %v", err)
+	}
+	testutil.CloseDB(t, database)
+
+	data := &parser.ParsedData{
+		Columns: []parser.Column{
+			{Name: "a", Type: parser.TypeInteger},
+			{Name: "A", Type: parser.TypeInteger},
+			{Name: "a_2", Type: parser.TypeInteger},
+			{Name: "", Type: parser.TypeText},
+			{Name: "", Type: parser.TypeText},
+		},
+		Rows: [][]any{{int64(1), int64(2), int64(3), "x", "y"}},
+	}
+	if err := database.LoadData("dup", data); err != nil {
+		t.Fatalf("LoadData() error = %v", err)
+	}
+
+	rows, err := database.Query("SELECT * FROM dup")
+	if err != nil {
+		t.Fatalf("query failed: %v", err)
+	}
+	testutil.CloseRows(t, rows)
+
+	got, err := rows.Columns()
+	if err != nil {
+		t.Fatalf("failed to get columns: %v", err)
+	}
+	want := []string{"a", "A_2", "a_2_2", "", "_2"}
+	if strings.Join(got, ",") != strings.Join(want, ",") {
+		t.Errorf("columns = %q, want %q", got, want)
+	}
+	if data.Columns[1].Name != "A" {
+		t.Errorf("LoadData mutated caller's columns: %q", data.Columns[1].Name)
 	}
 }
 

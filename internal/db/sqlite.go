@@ -28,10 +28,23 @@ func New() (*DB, error) {
 
 // LoadData loads parsed data into a table.
 func (db *DB) LoadData(tableName string, data *parser.ParsedData) error {
-	if err := db.createTable(tableName, data.Columns); err != nil {
+	columns := uniqueColumns(data.Columns)
+	if err := db.createTable(tableName, columns); err != nil {
 		return err
 	}
-	return db.insertRows(tableName, data.Columns, data.Rows)
+	return db.insertRows(tableName, columns, data.Rows)
+}
+
+// uniqueColumns renames columns SQLite would reject as duplicates, such as JSON
+// keys "id" and "Id" or several empty cells in a CSV header.
+func uniqueColumns(columns []parser.Column) []parser.Column {
+	var names NameSet
+	renamed := make([]parser.Column, len(columns))
+	for i, col := range columns {
+		renamed[i] = col
+		renamed[i].Name = names.Claim(col.Name)
+	}
+	return renamed
 }
 
 // createTable creates a table with the given columns.
