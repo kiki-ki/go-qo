@@ -29,9 +29,14 @@ func (s *NameSet) take(candidate string) bool {
 	if s.used == nil {
 		s.used = make(map[string]bool)
 	}
-	// SQLite identifiers are case-insensitive, so names differing only in case
-	// would pass a case-sensitive check here and still collide at CREATE.
-	key := strings.ToLower(candidate)
+	// SQLite folds only ASCII letters when comparing identifiers, so "a" and "A"
+	// collide at CREATE while "ä" and "Ä" do not.
+	key := strings.Map(func(r rune) rune {
+		if r >= 'A' && r <= 'Z' {
+			return r + ('a' - 'A')
+		}
+		return r
+	}, candidate)
 	if s.used[key] {
 		return false
 	}
